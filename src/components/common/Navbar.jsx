@@ -74,39 +74,43 @@ function Navbar() {
                           ? "text-yellow-25"
                           : "text-richblack-25"
                       }`}
-                    >
-                      <p className="uppercase tracking-wider group">{link.title}</p>
-                      <BsChevronDown className="group cursor-pointer"/>
+                    
+                    > 
+                    <p className="uppercase tracking-wider">{link.title}</p>
+                      <BsChevronDown />
                       <div className="invisible absolute left-[50%] top-[50%] z-[1000] flex w-[200px] translate-x-[-50%] translate-y-[3em] flex-col rounded-lg bg-richblack-5 p-4 text-richblack-900 opacity-0 transition-all duration-150 group-hover:visible group-hover:translate-y-[1.65em] group-hover:opacity-100 lg:w-[300px]">
                         <div className="absolute left-[50%] top-0 -z-10 h-6 w-6 translate-x-[80%] translate-y-[-40%] rotate-45 select-none rounded bg-richblack-5"></div>
-                        {loading || !subLinks ? (
-                          <p className="text-center">Loading...</p>
-                        ) : subLinks.length ? (
-                          <>
-                            {subLinks
-                              ?.filter(
-                                (subLink) => subLink?.courses?.length > 0
-                              )
-                              ?.map((subLink, i) => (
-                                <Link
-                                  to={`/catalog/${subLink.name
-                                    .split(" ")
-                                    .join("-")
-                                    .toLowerCase()}`}
-                                  className="rounded-lg bg-transparent py-4 pl-4 hover:bg-richblack-50"
-                                  key={i}
-                                >
-                                  <p className="uppercase tracking-wider">
-                                    {subLink.name}
-                                  </p>
-                                </Link>
-                              ))}
-                          </>
-                        ) : (
-                          <p className="text-center">No Courses Found</p>
-                        )}
+
+                     
+                          {loading || !subLinks ? (
+                            <p className="text-center">Loading...</p>
+                          ) : subLinks.length > 0 ? (
+                            <div className="flex flex-col capitalize">
+                              {subLinks
+                                .filter((subLink) => subLink.courses && subLink.courses.length > 0)
+                                .map((subLink, index) => (
+                                  <Link
+                                    to={`/catalog/${subLink.name
+                                      .split(" ")
+                                      .join("-")
+                                      .toLowerCase()}`}
+                                    key={index}
+                                    onClick={() => setIsMenuModalOpen(false)}
+                                  >
+                                    <p className="rounded-lg py-2 pl-4 uppercase tracking-wider text-xs">
+                                      {subLink.name}
+                                    </p>
+                                  </Link>
+                                ))}
+                            </div>
+                          ) : (
+                            <div className="rounded-lg py-2 pl-4 select-none cursor-not-allowed">
+                              No Catalog Available
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                
                   </>
                 ) : (
                   <Link to={link?.path}>
@@ -156,10 +160,9 @@ function Navbar() {
         <div className="mr-4 md:hidden">
           <GiHamburgerMenu
             onClick={() => setIsMenuModalOpen((prev) => !prev)}
-            className={` fill-richblack-100 `}
+            className={`fill-richblack-100`}
             fontSize={24}
           />
-
           <HamburgerMenu
             isMenuModalOpen={isMenuModalOpen}
             setIsMenuModalOpen={setIsMenuModalOpen}
@@ -168,28 +171,25 @@ function Navbar() {
               {(loading || loading2) && (
                 <div className="text-white font-bold">Loading ...</div>
               )}
-
               {token === null && (
-                <Link to={"/login"} onClick={() => setIsMenuModalOpen(false)}>
+                <Link to="/login" onClick={() => setIsMenuModalOpen(false)}>
                   <div className="flex gap-x-2 items-center w-full py-2 px-3 text-richblack-100 hover:text-richblack-25 hover:bg-richblack-700 uppercase tracking-wider">
                     <VscSignIn className="text-lg" />
                     Log In
                   </div>
                 </Link>
-              )}is 
-
+              )}
               {token === null && (
-                <Link to={"/signup"} onClick={() => setIsMenuModalOpen(false)}>
+                <Link to="/signup" onClick={() => setIsMenuModalOpen(false)}>
                   <div className="flex gap-x-2 items-center w-full py-2 px-3 text-richblack-100 hover:text-richblack-25 hover:bg-richblack-700 uppercase tracking-wider">
                     <AiOutlineLogin className="text-lg" />
                     Sign Up
                   </div>
                 </Link>
               )}
-
               {token !== null && (
                 <Link
-                  to={"/dashboard/my-profile"}
+                  to="/dashboard/my-profile"
                   onClick={() => setIsMenuModalOpen(false)}
                 >
                   <div className="flex gap-x-2 items-center w-full py-2 px-3 text-richblack-100 hover:text-richblack-25 hover:bg-richblack-700 uppercase tracking-wider">
@@ -198,10 +198,9 @@ function Navbar() {
                   </div>
                 </Link>
               )}
-
-              {token !== null && user && user?.role === "Student" && (
+              {token !== null && user && user.role === "Student" && (
                 <Link
-                  to={"/dashboard/cart"}
+                  to="/dashboard/cart"
                   onClick={() => setIsMenuModalOpen(false)}
                 >
                   <div className="flex gap-x-2 items-center w-full py-2 px-3 text-richblack-100 hover:text-richblack-25 hover:bg-richblack-700 uppercase tracking-wider">
@@ -210,46 +209,38 @@ function Navbar() {
                   </div>
                 </Link>
               )}
-
               {token !== null && (
                 <div
-                  className="flex gap-x-2 items-center w-full py-2 px-3 text-richblack-100 hover:text-richblack-25 hover:bg-richblack-700 cursor-pointer uppercase tracking-wider"
+                  className="flex gap-x-2 items-center w-full py-2 px-3 text-richblack
+                  cursor-pointer uppercase tracking-wider"
                   onClick={() => dispatch(logout(navigate))}
                 >
                   <VscSignOut className="text-lg" />
                   Log Out
                 </div>
               )}
-
               {/* General Buttons */}
               <div className="h-[1px] my-2 bg-richblack-100 w-3/4 mx-auto"></div>
-
-              <Link to={"/"} onClick={() => setIsMenuModalOpen(false)}>
+              <Link to="/" onClick={() => setIsMenuModalOpen(false)}>
                 <div className="flex gap-x-2 items-center w-full py-2 px-3 text-richblack-100 hover:text-richblack-25 hover:bg-richblack-700 uppercase tracking-wider">
                   <AiOutlineHome className="text-lg" />
                   Home
                 </div>
               </Link>
-
-              <Link to={"/about"} onClick={() => setIsMenuModalOpen(false)}>
+              <Link to="/about" onClick={() => setIsMenuModalOpen(false)}>
                 <div className="flex gap-x-2 items-center w-full py-2 px-3 text-richblack-100 hover:text-richblack-25 hover:bg-richblack-700 uppercase tracking-wider">
                   <BiDetail className="text-lg" />
                   About
                 </div>
               </Link>
-
-              <Link to={"/contact"} onClick={() => setIsMenuModalOpen(false)}>
+              <Link to="/contact" onClick={() => setIsMenuModalOpen(false)}>
                 <div className="flex gap-x-2 items-center w-full py-2 px-3 text-richblack-100 hover:text-richblack-25 hover:bg-richblack-700 uppercase tracking-wider">
                   <AiOutlineContacts className="text-lg" />
                   Contact
                 </div>
               </Link>
-
               {/* Category */}
-              <div
-                className=""
-                onClick={() => setCategoryOpen((prev) => !prev)}
-              >
+              <div onClick={() => setCategoryOpen((prev) => !prev)}>
                 <details>
                   <summary className="flex gap-x-2 items-center w-full py-2 px-3 text-richblack-100 uppercase tracking-wider">
                     <BiCategory className="text-lg" />
@@ -260,8 +251,7 @@ function Navbar() {
                       <SlArrowDown className="translate-y-[1px] ml-auto mr-1" />
                     )}
                   </summary>
-
-                  <div className="px-4 text-richblack-100 ">
+                  <div className="px-4 text-richblack-100">
                     {subLinks.length ? (
                       <div className="flex flex-col capitalize">
                         {subLinks.map((subLink, index) => (
@@ -273,7 +263,7 @@ function Navbar() {
                             key={index}
                             onClick={() => setIsMenuModalOpen(false)}
                           >
-                            <p className=" rounded-lg py-2 pl-4 uppercase tracking-wider text-xs">
+                            <p className="rounded-lg py-2 pl-4 uppercase tracking-wider text-xs">
                               {subLink.name}
                             </p>
                           </Link>
