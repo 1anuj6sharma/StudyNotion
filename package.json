@@ -8,7 +8,7 @@
     "@reduxjs/toolkit": "^2.4.0",
     "axios": "^1.7.8",
     "bonjour-service": "^1.1.0",
-    "babel-plugin-named-assets-import":"^0.3.8",
+   
     "chart.js": "^4.4.3",
     "concurrently": "^9.1.0",
     "copy-to-clipboard": "^3.3.3",
