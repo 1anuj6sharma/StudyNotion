@@ -28,6 +28,10 @@ const PORT = process.env.PORT || 4000;
 // Loading environment variables from .env file
 dotenv.config();
 
+// Serve static files from the React app
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../build')));
+
 // Connecting to database
 database.connect();
  
@@ -72,11 +76,16 @@ app.get("/", (req, res) => {
 	});
 });
 
-// Listening to the server
-app.listen(PORT, () => {
-	console.log(`App is listening at ${PORT}`);
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../build', 'index.html'));
 });
 
+// Start the server
+const server = app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
 
 // Socket.io connection
 io.on('connection', (socket) => {
