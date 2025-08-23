@@ -11,7 +11,6 @@
     "concurrently": "^8.2.0",
     "copy-to-clipboard": "^3.3.3",
     "cors": "^2.8.5",
-    "next": "^14.0.0",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
@@ -40,17 +39,14 @@
     "url": "https://github.com/thepranaygupta/react-tailwind-css-starter-pack/issues"
   },
   "scripts": {
-    "dev": "next dev",
-    "start": "next start",
-    "build": "next build",
-    "export": "next build && next export",
+    "dev": "react-scripts start",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "server": "cd server && npm run dev",
-    "dev:fullstack": "concurrently -n \"client,server\" -c \"bgBlue,bgYellow\" \"npm run dev\" \"npm run server\"",
-    "vercel-build": "npm install --legacy-peer-deps && npm run build",
-    "lint": "next lint",
-    "analyze": "ANALYZE=true next build"
+    "dev:fullstack": "concurrently -n \"client,server\" -c \"bgBlue,bgYellow\" \"npm start\" \"npm run server\"",
+    "vercel-build": "npm install --legacy-peer-deps && npm run build"
   },
   "eslintConfig": {
     "extends": [
@@ -75,10 +71,7 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "@next/bundle-analyzer": "^14.0.0",
     "autoprefixer": "^10.4.14",
-    "eslint": "^8.33.0",
-    "eslint-config-next": "14.0.0",
     "postcss": "^8.4.27",
     "tailwindcss": "^3.3.3"
   }
