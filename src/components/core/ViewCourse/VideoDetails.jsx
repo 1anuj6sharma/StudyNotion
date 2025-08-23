@@ -25,7 +25,7 @@ const VideoDetails = () => {
 
   const [videoData, setVideoData] = useState([])
   const [videoEnded, setVideoEnded] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [_, setLoading] = useState(false) // Loading state for lecture completion
 
   useEffect(() => {
     ; (async () => {

@@ -359,7 +359,7 @@ const MeetingRoom = () => {
       
       return false; // Failure
     }
-  }, []);
+  }, [isInstructor, setupWebRTC, cleanup, localStreamRef, localVideoRef, isAudioEnabled, isVideoEnabled]);
 
   useEffect(() => {
     const init = async () => {
