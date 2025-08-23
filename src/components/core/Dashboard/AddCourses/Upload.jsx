@@ -10,6 +10,7 @@ export default function Upload({
   label,
   register,
   setValue,
+  errors,
   video = false,
   viewData = null,
   editData = null,
