@@ -57,7 +57,7 @@ export default function CourseInformationForm() {
     getCategories()
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [course.category, course.courseDescription, course.courseName, course.instructions, course.price, course.tag, course.thumbnail, course.whatYouWillLearn, editCourse, setValue])
 
   const isFormUpdated = () => {
     const currentValues = getValues()

@@ -17,7 +17,7 @@ import { BiCategory, BiDetail } from "react-icons/bi";
 import { BsChevronDown } from "react-icons/bs";
 import { GiHamburgerMenu } from "react-icons/gi";
 import { SlArrowDown, SlArrowUp } from "react-icons/sl";
-import { VscDashboard, VscSignOut } from "react-icons/vsc";
+import { VscDashboard, VscSignIn, VscSignOut } from "react-icons/vsc";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, matchPath, useLocation, useNavigate } from "react-router-dom";
 

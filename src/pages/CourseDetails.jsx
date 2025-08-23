@@ -13,6 +13,7 @@ import CourseAccordionBar from "../components/core/Course/CourseAccordion"
 import CourseDetailsCard from "../components/core/Course/CourseDetailsCard"
 import { formatDate } from "../services/formatDate"
 import { BuyCourse } from "../services/operations/studentFeaturesAPI"
+import { fetchCourseDetails } from "../services/operations/courseDeatailsAPI"
 import GetAvgRating from "../utils/avgRating"
 import Error from "./Error"
 

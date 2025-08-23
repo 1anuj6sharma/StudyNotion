@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useDropzone } from "react-dropzone"
 import { FiUploadCloud } from "react-icons/fi"
 
@@ -8,6 +8,7 @@ import { Player } from "video-react"
 export default function Upload({
   name,
   label,
+  register,
   setValue,
   video = false,
   viewData = null,

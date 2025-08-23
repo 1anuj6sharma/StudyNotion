@@ -1,4 +1,4 @@
-import { useDispatch } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 import { Table, Tbody, Td, Th, Thead, Tr } from "react-super-responsive-table"
 import { convertSecondsToDuration } from "../../../../utils/secToDuration"
 import { setCourse, setEditCourse } from "../../../../slices/courseSlice"
@@ -21,6 +21,7 @@ export default function CoursesTable({ courses, setCourses }) {
   const [loading, setLoading] = useState(false)
   const [confirmationModal, setConfirmationModal] = useState(null);
   const [imageErrors, setImageErrors] = useState({});
+  const { token } = useSelector((state) => state.auth);
 
   const handleCourseDelete = async (courseId) => {
     setLoading(true)
