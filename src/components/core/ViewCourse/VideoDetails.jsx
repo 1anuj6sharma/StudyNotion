@@ -25,7 +25,7 @@ const VideoDetails = () => {
 
   const [videoData, setVideoData] = useState([])
   const [videoEnded, setVideoEnded] = useState(false)
-  const [loading] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     ; (async () => {
