@@ -152,6 +152,7 @@ const MeetingRoom = () => {
   const initializeMedia = useCallback(async (retryCount = 0) => {
     const MAX_RETRIES = 2;
     const RETRY_DELAY = 1000; // 1 second delay between retries
+    // isInstructor is used in the function body, so it should be in the dependency array
     
     console.log(`initializeMedia called. isInstructor: ${isInstructor}, retryCount: ${retryCount}`);
     

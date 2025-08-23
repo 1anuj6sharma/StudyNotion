@@ -28,7 +28,6 @@ function Navbar() {
   const location = useLocation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [loading2, setLoading2] = useState(false);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [subLinks, setSubLinks] = useState([]);
