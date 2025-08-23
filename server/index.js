@@ -1,20 +1,29 @@
 // Importing necessary modules and packages
 const express = require("express");
 const app = express();
-const userRoutes = require("./routes/User");
-const profileRoutes = require("./routes/Profile");
-const courseRoutes = require("./routes/Course");
-const paymentRoutes = require("./routes/Payments");
-const contactUsRoute = require("./routes/Contact");
 const database = require("./config/database");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const { cloudinaryConnect } = require("./config/cloudinary");
 const fileUpload = require("express-fileupload");
 const dotenv = require("dotenv");
+const http = require('http');
+const server = http.createServer(app);
+const io = require('socket.io')(server, { cors: { origin: '*' } });
+
+// Import models first to ensure they're registered
+require('./models');
+
+// Then import routes
+const userRoutes = require("./routes/User");
+const profileRoutes = require("./routes/Profile");
+const courseRoutes = require("./routes/Course");
+const paymentRoutes = require("./routes/Payments");
+const contactUsRoute = require("./routes/Contact");
+const liveClassRoutes = require('./routes/liveclass');
 
 // Setting up port number
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
 // Loading environment variables from .env file
 dotenv.config();
@@ -27,8 +36,10 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
 	cors({
-		origin: "*",
+		origin: ["http://localhost:3000", "http://localhost:4000"],
 		credentials: true,
+		methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+		allowedHeaders: ["Content-Type", "Authorization"],
 	})
 );
 app.use(
@@ -44,9 +55,14 @@ cloudinaryConnect();
 // Setting up routes
 app.use("/api/v1/auth", userRoutes);
 app.use("/api/v1/profile", profileRoutes);
-app.use("/api/v1/course", courseRoutes);
-app.use("/api/v1/payment", paymentRoutes);
-app.use("/api/v1/reach", contactUsRoute);
+app.use('/api/v1/course', courseRoutes);
+app.use('/api/v1/payment', paymentRoutes);
+app.use('/api/v1/reach', contactUsRoute);
+app.use('/api/v1/live-class', liveClassRoutes);
+
+// AI Chatbot Routes
+const aiChatbotRouter = require('./routes/aiChatbot');
+app.use('/api/v1/ai-chatbot', aiChatbotRouter);
 
 // Testing the server
 app.get("/", (req, res) => {
@@ -61,4 +77,22 @@ app.listen(PORT, () => {
 	console.log(`App is listening at ${PORT}`);
 });
 
+
+// Socket.io connection
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  socket.on('join-room', ({ roomId, userId }) => {
+    socket.join(roomId);
+    socket.to(roomId).emit('user-connected', userId);
+  });
+
+  socket.on('signal', (data) => {
+    socket.to(data.roomId).emit('signaling-message', {
+      userId: data.userId,
+      description: data.description,
+      candidate: data.candidate,
+    });
+  });
+});
 // End of code.

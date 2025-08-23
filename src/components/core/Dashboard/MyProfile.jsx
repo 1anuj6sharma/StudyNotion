@@ -3,7 +3,7 @@ import IconBtn from '../../common/IconBtn'
 import { RiEditBoxLine } from 'react-icons/ri'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { formattedDate } from "../../../utils/dateFormatter"
+import { formatDate } from "../../../utils/dateFormatter"
 
 const MyProfile = () => {
   const navigate = useNavigate();
@@ -84,7 +84,7 @@ const MyProfile = () => {
 
           <div className='w-full md:w-1/2'>
             <p className='mb-2 text-sm text-richblack-600'>Date of Birth</p>
-            <p className={`text-sm font-medium ${user?.profile?.dob ? 'text-richblack-5' : 'text-richblack-400'} `} >{user?.profile?.dob ? formattedDate(user?.profile?.dob) : 'Add Date of Birth'}</p>
+            <p className={`text-sm font-medium ${user?.profile?.dob ? 'text-richblack-5' : 'text-richblack-400'} `} >{user?.profile?.dob ? formatDate(user?.profile?.dob) : 'Add Date of Birth'}</p>
           </div>
         </div>
       </div>

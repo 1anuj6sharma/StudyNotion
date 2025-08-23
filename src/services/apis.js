@@ -1,10 +1,17 @@
-const BASE_URL = process.env.REACT_APP_BASE_URL
+const BASE_URL = process.env.REACT_APP_BASE_URL || 'http://localhost:4000'
+
+// Remove trailing slash from base URL to prevent URL duplication
+if (BASE_URL.endsWith('/')) {
+  BASE_URL = BASE_URL.slice(0, -1);
+}
 
 // AUTH ENDPOINTS
 export const endpoints = {
-  SENDOTP_API: BASE_URL + "/auth/sendotp",
-  SIGNUP_API: BASE_URL + "/auth/signup",
-  LOGIN_API: BASE_URL + "/auth/login",
+  SENDOTP_API: `${BASE_URL}/auth/sendotp`,
+  SIGNUP_API: `${BASE_URL}/auth/signup`,
+  LOGIN_API: `${BASE_URL}/auth/login`,
+  RESETPASSTOKEN_API: `${BASE_URL}/auth/reset-password-token`,
+  RESETPASSWORD_API: `${BASE_URL}/auth/reset-password`,
   RESETPASSTOKEN_API: BASE_URL + "/auth/reset-password-token",
   RESETPASSWORD_API: BASE_URL + "/auth/reset-password",
 }
@@ -49,6 +56,11 @@ export const ratingsEndpoints = {
   REVIEWS_DETAILS_API: BASE_URL + "/course/getReviews",
 }
 
+// AI CHATBOT ENDPOINTS
+export const aiChatbotEndpoints = {
+  GET_AI_RECOMMENDATIONS: BASE_URL + '/ai-chatbot/recommendations',
+}
+
 // CATAGORIES API
 export const categories = {
   CATEGORIES_API: BASE_URL + "/course/showAllCategories",
@@ -70,4 +82,22 @@ export const settingsEndpoints = {
   UPDATE_PROFILE_API: BASE_URL + "/profile/updateProfile",
   CHANGE_PASSWORD_API: BASE_URL + "/auth/changepassword",
   DELETE_PROFILE_API: BASE_URL + "/profile/deleteProfile",
+}
+
+// LIVE CLASS ENDPOINTS
+export const liveClassEndpoints = {
+  DELETE_LIVE_CLASS_API: BASE_URL + "/live-class/:classId",
+  UPDATE_PARTICIPANT_STATUS_API: BASE_URL + "/live-class/:classId/update-participant-status",
+  CREATE_LIVE_CLASS_API: BASE_URL + "/live-class/create",
+  GET_UPCOMING_CLASSES_API: BASE_URL + "/live-class/upcoming",
+  GET_COURSE_CLASSES_API: BASE_URL + "/live-class/course/:courseId",
+  JOIN_LIVE_CLASS_API: BASE_URL + "/live-class/join/:classId",
+  LEAVE_LIVE_CLASS_API: BASE_URL + "/live-class/leave/:classId",
+  GET_LIVE_CLASS_API: BASE_URL + "/live-class/:classId",
+  GET_LIVE_CLASS_BY_ROOM_API: BASE_URL + "/live-class/room/:roomId",
+  UPDATE_CLASS_STATUS_API: BASE_URL + "/live-class/:classId/status",
+  GET_INSTRUCTOR_CLASSES_API: BASE_URL + "/live-class/instructor/my-classes",
+  DELETE_LIVE_CLASS_API: BASE_URL + "/live-class/:classId",
+  START_LIVE_CLASS_API: BASE_URL + "/live-class/:classId/start",
+  TEST_CREATE_LIVE_CLASS_API: BASE_URL + "/live-class/test-create",
 }

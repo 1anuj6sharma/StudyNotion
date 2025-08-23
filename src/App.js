@@ -17,6 +17,11 @@ import Instructor from "./components/core/Dashboard/Instructor"
 import MyCourses from "./components/core/Dashboard/MyCourses"
 import MyProfile from "./components/core/Dashboard/MyProfile"
 import Settings from "./components/core/Dashboard/Settings"
+import CreateLiveClass from "./components/core/Dashboard/LiveClass/CreateLiveClass"
+import LiveClasses from "./components/core/Dashboard/LiveClass/LiveClasses"
+import MyLiveClasses from "./components/core/Dashboard/LiveClass/MyLiveClasses"
+import MeetingRoom from "./components/core/Dashboard/LiveClass/MeetingRoom"
+import DashboardAIChatbot from "./components/core/Dashboard/DashboardAIChatbot"
 import VideoDetails from "./components/core/ViewCourse/VideoDetails"
 import About from "./pages/About"
 import Catalog from "./pages/Catalog"
@@ -35,16 +40,30 @@ import ViewCourse from "./pages/ViewCourse"
 import { getUserDetails } from "./services/operations/profileAPI"
 import { ACCOUNT_TYPE } from "./utils/constants"
 
-
 function App() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.profile)
 
   useEffect(() => {
-    if (localStorage.getItem("token")) {
-      const token = JSON.parse(localStorage.getItem("token"))
-      dispatch(getUserDetails(token, navigate))
+    const token = localStorage.getItem("token")
+    if (token) {
+      // Check if token is valid (not a JSON stringified token)
+      try {
+        // If it's a JSON string, it will parse successfully and we need to clean it
+        const parsed = JSON.parse(token)
+        if (typeof parsed === 'string') {
+          // It was JSON stringified, store the actual token
+          localStorage.setItem("token", parsed)
+          dispatch(getUserDetails(parsed, navigate))
+        } else {
+          // Invalid token format, remove it
+          localStorage.removeItem("token")
+        }
+      } catch (error) {
+        // It's not JSON, which is correct for JWT tokens
+        dispatch(getUserDetails(token, navigate))
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -101,6 +120,7 @@ function App() {
           }
         />
         {/* Private Route - for Only Logged in User */}
+        {/* Main Dashboard Layout Route */}
         <Route
           element={
             <PrivateRoute>
@@ -110,7 +130,8 @@ function App() {
         >
           {/* Route for all users */}
           <Route path="dashboard/my-profile" element={<MyProfile />} />
-          <Route path="dashboard/Settings" element={<Settings />} />
+          <Route path="dashboard/settings" element={<Settings />} />
+          
           {/* Route only for Instructors */}
           {user?.accountType === ACCOUNT_TYPE.INSTRUCTOR && (
             <>
@@ -121,8 +142,11 @@ function App() {
                 path="dashboard/edit-course/:courseId"
                 element={<EditCourse />}
               />
+              <Route path="dashboard/live-classes" element={<LiveClasses />} />
+              <Route path="dashboard/create-live-class" element={<CreateLiveClass />} />
             </>
           )}
+          
           {/* Route only for Students */}
           {user?.accountType === ACCOUNT_TYPE.STUDENT && (
             <>
@@ -130,11 +154,15 @@ function App() {
                 path="dashboard/enrolled-courses"
                 element={<EnrolledCourses />}
               />
-              <Route path="/dashboard/cart" element={<Cart />} />
+              <Route path="dashboard/my-live-classes" element={<MyLiveClasses />} />
+              <Route path="dashboard/meeting/:classId" element={<MeetingRoom />} />
+              <Route path="dashboard/cart" element={<Cart />} />
             </>
           )}
-          <Route path="dashboard/settings" element={<Settings />} />
         </Route>
+
+          {/* AI Chatbot Route */}
+          <Route path="dashboard/ai-chatbot" element={<DashboardAIChatbot />} />
 
         {/* For the watching course lectures */}
         <Route
@@ -154,8 +182,19 @@ function App() {
           )}
         </Route>
 
+        {/* Live Class Meeting Room - accessible to all authenticated users */}
+        <Route 
+          path="/live-class/:roomId" 
+          element={
+            <PrivateRoute>
+              <MeetingRoom />
+            </PrivateRoute>
+          } 
+        />
+        
         {/* 404 Page */}
         <Route path="*" element={<Error />} />
+        <Route path="/live-classes" element={<LiveClasses />} />
       </Routes>
     </div>
   )

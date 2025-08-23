@@ -23,8 +23,9 @@ export default function CoursesTable({ courses, setCourses }) {
   const navigate = useNavigate()
   const { token } = useSelector((state) => state.auth)
   const [loading, setLoading] = useState(false)
-  const [confirmationModal, setConfirmationModal] = useState(null)
-  const TRUNCATE_LENGTH = 30
+  const [confirmationModal, setConfirmationModal] = useState(null);
+  const [imageErrors, setImageErrors] = useState({});
+  const TRUNCATE_LENGTH = 30;
 
   const handleCourseDelete = async (courseId) => {
     setLoading(true)
@@ -78,11 +79,25 @@ export default function CoursesTable({ courses, setCourses }) {
                 className="flex gap-x-10 border-b border-richblack-800 px-6 py-8 gap-4"
               >
                 <Td colSpan={1} className="flex flex-1 gap-x-4 p-3">
-                  <img
-                    src={course?.thumbnail}
-                    alt={course?.courseName}
-                    className="md:h-[148px] md:w-[220px] aspect-video rounded-lg object-cover"
-                  />
+                  <div className="md:h-[148px] md:w-[220px] aspect-video rounded-lg bg-richblack-700 flex items-center justify-center">
+                    {course?.thumbnail && !imageErrors[course._id] ? (
+                      <img
+                        src={course.thumbnail}
+                        alt={course.courseName}
+                        className="h-full w-full rounded-lg object-cover"
+                        onError={() => {
+                          setImageErrors(prev => ({
+                            ...prev,
+                            [course._id]: true
+                          }));
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-richblack-400">
+                        No Thumbnail
+                      </div>
+                    )}
+                  </div>
                   <div className="flex flex-col gap-1 justify-between">
                     <p className="text-lg font-semibold text-richblack-5 mt-3 uppercase truncate tracking-wide">
                       {course.courseName}
@@ -106,12 +121,12 @@ export default function CoursesTable({ courses, setCourses }) {
                         Drafted
                       </p>
                     ) : (
-                      <p className="flex w-fit flex-row items-center gap-2 rounded-full bg-richblack-700 px-2 py-[2px] text-[12px] font-medium text-yellow-100 uppercase tracking-wider">
+                      <div className="flex w-fit flex-row items-center gap-2 rounded-full bg-richblack-700 px-2 py-[2px] text-[12px] font-medium text-yellow-100 uppercase tracking-wider">
                         <div className="flex h-3 w-3 items-center justify-center rounded-full bg-yellow-100 text-richblack-700">
                           <FaCheck size={8} />
                         </div>
-                        Published
-                      </p>
+                        <span>Published</span>
+                      </div>
                     )}
                   </div>
                 </Td>

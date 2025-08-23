@@ -17,12 +17,58 @@ function ReviewSlider() {
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        const { data } = await apiConnector("GET", ratingsEndpoints.REVIEWS_DETAILS_API);
-        if (data?.success) {
-          setReviews(data?.data);
+        console.log("Fetching reviews...");
+        const response = await apiConnector("GET", ratingsEndpoints.REVIEWS_DETAILS_API);
+        console.log("Reviews API response:", response);
+        
+        if (response?.data?.success) {
+          // Ensure we have an array of reviews
+          const reviewsData = Array.isArray(response.data.data) 
+            ? response.data.data 
+            : [];
+          
+          // Transform the data with safe defaults
+          const formattedReviews = reviewsData.map(review => {
+            // Safely extract user data with defaults
+            const user = typeof review.user === 'object' ? review.user : {};
+            const course = typeof review.course === 'object' ? review.course : {};
+            
+            return {
+              ...review,
+              rating: Number(review.rating) || 0,
+              review: String(review.review || ''),
+              user: {
+                firstName: String(user.firstName || 'Anonymous'),
+                lastName: String(user.lastName || 'User'),
+                image: user.image || null,
+              },
+              course: {
+                courseName: String(course.courseName || 'Unknown Course')
+              }
+            };
+          });
+          
+          setReviews(formattedReviews);
+        } else {
+          console.error("Failed to fetch reviews:", response?.data?.message);
+          setReviews([]);
         }
       } catch (error) {
         console.error("Error fetching reviews: ", error);
+        // Set some default reviews in case of error
+        setReviews([{
+          id: 'error-review',
+          rating: 5,
+          review: 'Error loading reviews. Please try again later.',
+          user: {
+            firstName: 'System',
+            lastName: '',
+            image: null
+          },
+          course: {
+            courseName: 'Error'
+          }
+        }]);
       }
     };
 
@@ -33,7 +79,7 @@ function ReviewSlider() {
     <div className="text-white">
       <div className="my-[50px] h-[184px] max-w-[100vw] lg:max-w-maxContent p-1">
         <Swiper
-          slidesPerView={reviews.length < 4 ? reviews.length % 4 : 4}
+          slidesPerView={reviews?.length > 0 ? (reviews.length < 4 ? reviews.length : 4) : 1}
           spaceBetween={14}
           loop={true}
           freeMode={true}
@@ -44,7 +90,7 @@ function ReviewSlider() {
           modules={[FreeMode, Pagination, Autoplay]}
           className="w-full"
         >
-          {reviews.map((review, index) => (
+          {reviews && reviews.length > 0 ? (reviews.map((review, index) => (
             <SwiperSlide key={index}>
               <div className="bg-richblack-800 p-4 text-richblack-25 rounded-lg">
                 <div className="flex items-center gap-4">
@@ -82,7 +128,11 @@ function ReviewSlider() {
                 </div>
               </div>
             </SwiperSlide>
-          ))}
+          ))) : (
+            <div className="text-center py-8 text-richblack-200">
+              No reviews found. Be the first to leave a review!
+            </div>
+          )}
         </Swiper>
       </div>
     </div>

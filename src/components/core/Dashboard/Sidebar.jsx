@@ -32,12 +32,17 @@ const Sidebar = () => {
     <div className='bg-richblack-800 ' >
       <div className='flex flex-col w-fit md:min-w-[220px] min-h-[calc(100vh-3.5rem)] border-r border-richblack-700 py-10' >
         <div className='flex flex-col' >
-          {
-            sidebarLinks.map((link) => {
-              if (link.type && link.type !== user?.accountType) return null;
-              return <SidebarLink key={link.id} data={link} />
+          {sidebarLinks
+            .filter(link => {
+              if (!link.type) return true;
+              if (Array.isArray(link.type)) {
+                return link.type.includes(user?.accountType);
+              }
+              return link.type === user?.accountType;
             })
-          }
+            .map((link, index) => (
+              <SidebarLink key={`${link.id}-${index}`} data={link} />
+            ))}
         </div>
 
         <div className='mx-auto my-6 h-[1px] w-10/12 bg-richblack-700' ></div>
@@ -46,9 +51,9 @@ const Sidebar = () => {
         <div>
           <SidebarLink
             data={{
-              name: 'Setting',
+              name: 'Settings',
               path: '/dashboard/settings',
-              icon: 'VscSettingsGear'
+              icon: 'VscGear'
             }}
           />
         </div>
