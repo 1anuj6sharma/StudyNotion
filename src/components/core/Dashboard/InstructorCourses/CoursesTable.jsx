@@ -1,4 +1,4 @@
-import { useDispatch, useSelector } from "react-redux"
+import { useDispatch } from "react-redux"
 import { Table, Tbody, Td, Th, Thead, Tr } from "react-super-responsive-table"
 import { convertSecondsToDuration } from "../../../../utils/secToDuration"
 import { setCourse, setEditCourse } from "../../../../slices/courseSlice"
@@ -15,17 +15,12 @@ import {
   deleteCourse,
   fetchInstructorCourses,
 } from "../../../../services/operations/courseDeatailsAPI"
-import { COURSE_STATUS } from "../../../../utils/constants"
-import ConfirmationModal from "../../../common/ConfirmationModal"
 
 export default function CoursesTable({ courses, setCourses }) {
-  const dispatch = useDispatch()
   const navigate = useNavigate()
-  const { token } = useSelector((state) => state.auth)
   const [loading, setLoading] = useState(false)
   const [confirmationModal, setConfirmationModal] = useState(null);
   const [imageErrors, setImageErrors] = useState({});
-  const TRUNCATE_LENGTH = 30;
 
   const handleCourseDelete = async (courseId) => {
     setLoading(true)

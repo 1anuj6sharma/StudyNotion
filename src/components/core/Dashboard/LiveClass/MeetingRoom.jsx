@@ -39,14 +39,6 @@ const MeetingRoom = () => {
     const pc = new RTCPeerConnection(configuration);
     peerConnectionRef.current = pc;
 
-    // Handle remote stream
-    pc.ontrack = (event) => {
-      console.log('Received remote stream');
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.streams[0];
-      }
-    };
-
     // Handle ICE candidates
     pc.onicecandidate = (event) => {
       if (event.candidate) {
@@ -63,7 +55,7 @@ const MeetingRoom = () => {
     }
 
     return pc;
-  }, [isInstructor]);
+  }, []);
 
   const fetchLiveClassDetails = useCallback(async () => {
     try {
