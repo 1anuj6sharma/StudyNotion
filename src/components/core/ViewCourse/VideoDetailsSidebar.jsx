@@ -10,7 +10,6 @@ import { MdOutlineKeyboardArrowDown } from 'react-icons/md'
 
 const VideoDetailsSidebar = ({ setReviewModal }) => {
   console.log("HII", setReviewModal);
-  const [activeStatus, setActiveStatus] = useState("");
   const [videoActive, setVideoActive] = useState("");
   const { courseId, sectionId, subsectionId } = useParams();
   const { courseSectionData, courseEntireData, completedLectures, totalNoOfLectures } = useSelector(state => state.viewCourse);
@@ -23,7 +22,6 @@ const VideoDetailsSidebar = ({ setReviewModal }) => {
       const currentSubSectionIndex = courseSectionData[currentSectionIndex]?.subSection.findIndex((subSection) => subSection?._id === subsectionId);
       if (currentSectionIndex === -1 || currentSubSectionIndex === -1) return;
       const activesubsectionId = courseSectionData[currentSectionIndex].subSection[currentSubSectionIndex]._id;
-      setActiveStatus(courseSectionData[currentSectionIndex]._id);
       setVideoActive(activesubsectionId);
     })();
   }, [courseSectionData, sectionId, subsectionId]);
