@@ -1,4 +1,4 @@
-const BASE_URL = process.env.REACT_APP_BASE_URL || 'http://localhost:4000'
+let BASE_URL = process.env.REACT_APP_BASE_URL || 'http://localhost:4000';
 
 // Remove trailing slash from base URL to prevent URL duplication
 if (BASE_URL.endsWith('/')) {
@@ -12,8 +12,6 @@ export const endpoints = {
   LOGIN_API: `${BASE_URL}/auth/login`,
   RESETPASSTOKEN_API: `${BASE_URL}/auth/reset-password-token`,
   RESETPASSWORD_API: `${BASE_URL}/auth/reset-password`,
-  RESETPASSTOKEN_API: BASE_URL + "/auth/reset-password-token",
-  RESETPASSWORD_API: BASE_URL + "/auth/reset-password",
 }
 
 // PROFILE ENDPOINTS
@@ -97,7 +95,6 @@ export const liveClassEndpoints = {
   GET_LIVE_CLASS_BY_ROOM_API: BASE_URL + "/live-class/room/:roomId",
   UPDATE_CLASS_STATUS_API: BASE_URL + "/live-class/:classId/status",
   GET_INSTRUCTOR_CLASSES_API: BASE_URL + "/live-class/instructor/my-classes",
-  DELETE_LIVE_CLASS_API: BASE_URL + "/live-class/:classId",
   START_LIVE_CLASS_API: BASE_URL + "/live-class/:classId/start",
   TEST_CREATE_LIVE_CLASS_API: BASE_URL + "/live-class/test-create",
 }

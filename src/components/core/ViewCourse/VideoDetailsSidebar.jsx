@@ -10,6 +10,7 @@ import { MdOutlineKeyboardArrowDown } from 'react-icons/md'
 
 const VideoDetailsSidebar = ({ setReviewModal }) => {
   console.log("HII", setReviewModal);
+  const [activeStatus, setActiveStatus] = useState("");
   const [videoActive, setVideoActive] = useState("");
   const { courseId, sectionId, subsectionId } = useParams();
   const { courseSectionData, courseEntireData, completedLectures, totalNoOfLectures } = useSelector(state => state.viewCourse);
