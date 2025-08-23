@@ -14,11 +14,7 @@ const LiveClasses = () => {
   const [loading, setLoading] = useState(true);
   const [confirmationModal, setConfirmationModal] = useState(null);
 
-  useEffect(() => {
-    fetchLiveClasses();
-  }, []);
-
-  const fetchLiveClasses = async () => {
+  const fetchLiveClasses = useCallback(async () => {
     try {
       setLoading(true);
       const result = await getInstructorClasses(token);
@@ -31,7 +27,11 @@ const LiveClasses = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    fetchLiveClasses();
+  }, [fetchLiveClasses]);
 
   const handleDeleteClass = async (classId) => {
     try {
@@ -81,12 +81,6 @@ const LiveClasses = () => {
     }
   };
 
-  const isClassLive = (scheduledTime, duration) => {
-    const now = new Date();
-    const startTime = new Date(scheduledTime);
-    const endTime = new Date(startTime.getTime() + duration * 60000);
-    return now >= startTime && now <= endTime;
-  };
 
   if (loading) {
     return (

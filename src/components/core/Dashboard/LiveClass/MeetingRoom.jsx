@@ -5,40 +5,7 @@ import { toast } from 'react-hot-toast';
 import { getLiveClassDetails, getLiveClassByRoomId, joinLiveClassDirect, leaveLiveClassDirect, updateClassStatus, updateParticipantStatus } from '../../../../services/operations/liveClassAPI';
 import { MdMic, MdMicOff, MdVideocam, MdVideocamOff, MdCallEnd, MdChat, MdPeople } from 'react-icons/md';
 
-// Video container style
-const videoContainerStyle = {
-  position: 'relative',
-  width: '100%',
-  height: '100%',
-  minHeight: '300px',
-  overflow: 'hidden',
-  borderRadius: '0.5rem',
-  backgroundColor: '#1E1E2D',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center'
-};
-
-// Video element style
-const videoStyle = {
-  width: '100%',
-  height: '100%',
-  objectFit: 'cover',
-  transform: 'scaleX(-1)',
-  backgroundColor: '#1E1E2D',
-  position: 'absolute',
-  top: 0,
-  left: 0
-};
-
-// Fallback content when video is not available
-const fallbackStyle = {
-  padding: '20px',
-  textAlign: 'center',
-  color: '#888',
-  fontSize: '14px'
-};
+// Video styles are now defined inline in the component
 
 const MeetingRoom = () => {
   const { classId, roomId } = useParams();
@@ -58,7 +25,7 @@ const MeetingRoom = () => {
   const remoteVideoRef = useRef(null);
   const localStreamRef = useRef(null);
   const peerConnectionRef = useRef(null);
-  const socketRef = useRef(null);
+  // socketRef is intentionally kept for future use
 
   const setupWebRTC = useCallback(() => {
     // Initialize WebRTC connection
@@ -96,7 +63,7 @@ const MeetingRoom = () => {
     }
 
     return pc;
-  }, []);
+  }, [isInstructor]);
 
   const fetchLiveClassDetails = useCallback(async () => {
     try {

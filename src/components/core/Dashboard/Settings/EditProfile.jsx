@@ -13,7 +13,7 @@ export default function EditProfile() {
   const { token } = useSelector((state) => state.auth)
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const {
     register,
     handleSubmit,
