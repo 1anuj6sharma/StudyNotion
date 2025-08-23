@@ -167,7 +167,7 @@ function Navbar() {
             setIsMenuModalOpen={setIsMenuModalOpen}
           >
             <div className="flex flex-col gap-y-2 py-5 px-5">
-              {(loading || loading2) && (
+              {loading && (
                 <div className="text-white font-bold">Loading ...</div>
               )}
               {token === null && (
