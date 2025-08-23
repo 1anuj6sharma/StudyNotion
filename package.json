@@ -67,7 +67,7 @@
     ]
   },
   "resolutions": {
-    "babel-plugin-named-assets-import": "^0.3.8"
+    "babel-plugin-named-assets-import": "^0.3.7"
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
