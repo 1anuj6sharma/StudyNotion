@@ -1,7 +1,7 @@
 import { toast } from "react-hot-toast"
 
 import { apiConnector } from "../apiconnector"
-import { catalogData } from "../apis"
+import { courseEndpoints } from "../apis"
 
 /**
  * Fetches catalog page data for a specific category
@@ -28,7 +28,7 @@ export const getCatalogPageData = async (categoryId) => {
     // Make the API request
     const response = await apiConnector(
       "POST",
-      catalogData.CATALOGPAGEDATA_API,
+      courseEndpoints.GET_CATEGORY_PAGE_DETAILS,
       { categoryId },
       { 
         'Content-Type': 'application/json',
@@ -37,6 +37,8 @@ export const getCatalogPageData = async (categoryId) => {
       null, // params
       { timeout: 15000 } // 15 seconds timeout
     );
+    
+    console.log('Full API response:', response);
     
     console.log('[getCatalogPageData] API response:', {
       status: response.status,
