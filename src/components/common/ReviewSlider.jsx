@@ -21,38 +21,42 @@ function ReviewSlider() {
         const response = await apiConnector("GET", ratingsEndpoints.REVIEWS_DETAILS_API);
         console.log("Reviews API response:", response);
         
-        if (response?.data?.success) {
-          // Ensure we have an array of reviews
-          const reviewsData = Array.isArray(response.data.data) 
-            ? response.data.data 
-            : [];
-          
-          // Transform the data with safe defaults
-          const formattedReviews = reviewsData.map(review => {
-            // Safely extract user data with defaults
-            const user = typeof review.user === 'object' ? review.user : {};
-            const course = typeof review.course === 'object' ? review.course : {};
-            
-            return {
-              ...review,
-              rating: Number(review.rating) || 0,
-              review: String(review.review || ''),
-              user: {
-                firstName: String(user.firstName || 'Anonymous'),
-                lastName: String(user.lastName || 'User'),
-                image: user.image || null,
-              },
-              course: {
-                courseName: String(course.courseName || 'Unknown Course')
-              }
-            };
-          });
-          
-          setReviews(formattedReviews);
-        } else {
-          console.error("Failed to fetch reviews:", response?.data?.message);
-          setReviews([]);
+        if (!response?.data?.success) {
+          throw new Error(response?.data?.message || 'Failed to fetch reviews');
         }
+
+        // Ensure we have an array of reviews
+        const reviewsData = Array.isArray(response.data.data) 
+          ? response.data.data.filter(review => review && typeof review === 'object')
+          : [];
+        
+        if (reviewsData.length === 0) {
+          console.warn("No valid reviews found in the response");
+          return setReviews([{
+            id: 'no-reviews',
+            rating: 5,
+            review: 'No reviews available yet. Be the first to review!',
+            user: { firstName: 'StudyNotion', lastName: 'Team', image: null },
+            course: { courseName: 'Welcome' }
+          }]);
+        }
+        
+        // Transform the data with safe defaults
+        const formattedReviews = reviewsData.map(review => ({
+          ...review,
+          rating: Number(review.rating) || 0,
+          review: String(review.review || ''),
+          user: {
+            firstName: String(review.user?.firstName || 'Anonymous'),
+            lastName: String(review.user?.lastName || 'User'),
+            image: review.user?.image || null,
+          },
+          course: {
+            courseName: String(review.course?.courseName || 'Unknown Course')
+          }
+        }));
+        
+        setReviews(formattedReviews);
       } catch (error) {
         console.error("Error fetching reviews: ", error);
         // Set some default reviews in case of error
