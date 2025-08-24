@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react"
 import { useSelector } from "react-redux"
 import { useParams } from "react-router-dom"
 import Footer from "../components/common/Footer"
-import CourseCard from "../components/core/Catalog/Course_Card"
-import CourseSlider from "../components/core/Catalog/Course_Slider"
+import Course_Card from "../components/core/Catalog/Course_Card"
+import Course_Slider from "../components/core/Catalog/Course_Slider"
 import { apiConnector } from "../services/apiconnector"
 import { categories } from "../services/apis"
 import { getCatalogPageData } from "../services/operations/pageAndComponentDatas"
@@ -125,52 +125,34 @@ function Catalog() {
           </p>
         </div>
         <div>
-          <CourseSlider
+          <Course_Slider
             Courses={catalogPageData?.data?.selectedCategory?.courses}
           />
         </div>
       </div>
-      {/* Section 2 - Top courses in different category - Always show this section */}
+      {/* Section 2 */}
       <div className="mx-auto box-content w-full max-w-maxContentTab px-4 py-12 lg:max-w-maxContent">
         <div className="section_heading">
-          {catalogPageData?.data?.differentCategory?.name 
-            ? `Top courses in ${catalogPageData.data.differentCategory.name}`
-            : 'Recommended for you'}
+          Top courses in {catalogPageData?.data?.differentCategory?.name}
         </div>
         <div className="py-8">
-          {catalogPageData?.data?.differentCategory?.courses?.length > 0 ? (
-            <CourseSlider
-              Courses={catalogPageData.data.differentCategory.courses}
-            />
-          ) : (
-            <div className="text-center py-8 text-richblack-200">
-              No recommended courses available at the moment.
-            </div>
-          )}
+          <Course_Slider
+            Courses={catalogPageData?.data?.differentCategory?.courses}
+          />
         </div>
       </div>
 
-      {/* Section 3 - Frequently Bought - Always show this section */}
+      {/* Section 3 */}
       <div className="mx-auto box-content w-full max-w-maxContentTab px-4 py-12 lg:max-w-maxContent">
         <div className="section_heading">Frequently Bought</div>
         <div className="py-8">
-          {catalogPageData?.data?.mostSellingCourses?.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              {catalogPageData.data.mostSellingCourses
-                .slice(0, 4)
-                .map((course, i) => (
-                  <CourseCard 
-                    course={course} 
-                    key={course?._id || i} 
-                    Height={"h-[400px]"} 
-                  />
-                ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-richblack-200">
-              No frequently bought courses to show.
-            </div>
-          )}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {catalogPageData?.data?.mostSellingCourses
+              ?.slice(0, 4)
+              .map((course, i) => (
+                <Course_Card course={course} key={i} Height={"h-[400px]"} />
+              ))}
+          </div>
         </div>
       </div>
 
