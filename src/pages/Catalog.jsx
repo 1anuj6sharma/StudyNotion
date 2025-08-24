@@ -130,43 +130,49 @@ function Catalog() {
           />
         </div>
       </div>
-      {/* Section 2 - Top courses in different category */}
-      {catalogPageData?.data?.differentCategory?.courses?.length > 0 && (
-        <div className="mx-auto box-content w-full max-w-maxContentTab px-4 py-12 lg:max-w-maxContent">
-          <div className="section_heading">
-            {catalogPageData?.data?.differentCategory?.name 
-              ? `Top courses in ${catalogPageData.data.differentCategory.name}`
-              : 'Recommended for you'}
-          </div>
-          <div className="py-8">
-            <CourseSlider
-              Courses={Array.isArray(catalogPageData.data.differentCategory.courses) 
-                ? catalogPageData.data.differentCategory.courses 
-                : []}
-            />
-          </div>
+      {/* Section 2 - Top courses in different category - Always show this section */}
+      <div className="mx-auto box-content w-full max-w-maxContentTab px-4 py-12 lg:max-w-maxContent">
+        <div className="section_heading">
+          {catalogPageData?.data?.differentCategory?.name 
+            ? `Top courses in ${catalogPageData.data.differentCategory.name}`
+            : 'Recommended for you'}
         </div>
-      )}
+        <div className="py-8">
+          {catalogPageData?.data?.differentCategory?.courses?.length > 0 ? (
+            <CourseSlider
+              Courses={catalogPageData.data.differentCategory.courses}
+            />
+          ) : (
+            <div className="text-center py-8 text-richblack-200">
+              No recommended courses available at the moment.
+            </div>
+          )}
+        </div>
+      </div>
 
-      {/* Section 3 - Frequently Bought */}
-      {catalogPageData?.data?.mostSellingCourses?.length > 0 && (
-        <div className="mx-auto box-content w-full max-w-maxContentTab px-4 py-12 lg:max-w-maxContent">
-          <div className="section_heading">Frequently Bought</div>
-          <div className="py-8">
+      {/* Section 3 - Frequently Bought - Always show this section */}
+      <div className="mx-auto box-content w-full max-w-maxContentTab px-4 py-12 lg:max-w-maxContent">
+        <div className="section_heading">Frequently Bought</div>
+        <div className="py-8">
+          {catalogPageData?.data?.mostSellingCourses?.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               {catalogPageData.data.mostSellingCourses
                 .slice(0, 4)
                 .map((course, i) => (
                   <CourseCard 
                     course={course} 
-                    key={course._id || i} 
+                    key={course?._id || i} 
                     Height={"h-[400px]"} 
                   />
                 ))}
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-8 text-richblack-200">
+              No frequently bought courses to show.
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       <Footer />
     </>
