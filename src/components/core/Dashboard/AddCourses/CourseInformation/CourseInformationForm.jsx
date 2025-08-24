@@ -35,46 +35,56 @@ export default function CourseInformationForm() {
   useEffect(() => {
     const getCategories = async () => {
       setLoading(true)
-      const categories = await fetchCourseCategories()
-      if (categories.length > 0) {
-        // console.log("categories", categories)
-        setCourseCategories(categories)
+      try {
+        const categories = await fetchCourseCategories()
+        if (categories?.length > 0) {
+          setCourseCategories(categories)
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error)
+        toast.error("Failed to load course categories")
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
-    // if form is in edit mode
-    if (editCourse) {
-      // console.log("data populated", editCourse)
-      setValue("courseTitle", course.courseName)
-      setValue("courseShortDesc", course.courseDescription)
-      setValue("coursePrice", course.price)
-      setValue("courseTags", course.tag)
-      setValue("courseBenefits", course.whatYouWillLearn)
-      setValue("courseCategory", course.category)
-      setValue("courseRequirements", course.instructions)
-      setValue("courseImage", course.thumbnail)
+    
+    // if form is in edit mode and course data is available
+    if (editCourse && course) {
+      setValue("courseTitle", course.courseName || "")
+      setValue("courseShortDesc", course.courseDescription || "")
+      setValue("coursePrice", course.price || 0)
+      setValue("courseTags", course.tag || [])
+      setValue("courseBenefits", course.whatYouWillLearn || "")
+      setValue("courseCategory", course.category || "")
+      setValue("courseRequirements", course.instructions || [])
+      setValue("courseImage", course.thumbnail || "")
     }
+    
     getCategories()
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [course.category, course.courseDescription, course.courseName, course.instructions, course.price, course.tag, course.thumbnail, course.whatYouWillLearn, editCourse, setValue])
+  }, [course, editCourse, setValue])
 
   const isFormUpdated = () => {
+    if (!course) return true; // If no course data, consider form as updated to allow creation
+    
     const currentValues = getValues()
-    // console.log("changes after editing form values:", currentValues)
-    if (
-      currentValues.courseTitle !== course.courseName ||
-      currentValues.courseShortDesc !== course.courseDescription ||
-      currentValues.coursePrice !== course.price ||
-      currentValues.courseTags.toString() !== course.tag.toString() ||
-      currentValues.courseBenefits !== course.whatYouWillLearn ||
-      currentValues.courseCategory._id !== course.category._id ||
-      currentValues.courseRequirements.toString() !==
-        course.instructions.toString() ||
-      currentValues.courseImage !== course.thumbnail
-    ) {
-      return true
+    
+    // Helper function to safely compare arrays
+    const arraysEqual = (a, b) => {
+      if (!Array.isArray(a) || !Array.isArray(b)) return false;
+      if (a.length !== b.length) return false;
+      return a.every((val, index) => val === b[index]);
     }
+    
+    // Check each field for changes
+    if (currentValues.courseTitle !== (course.courseName || '')) return true;
+    if (currentValues.courseShortDesc !== (course.courseDescription || '')) return true;
+    if (Number(currentValues.coursePrice) !== Number(course.price || 0)) return true;
+    if (!arraysEqual(currentValues.courseTags || [], course.tag || [])) return true;
+    if (currentValues.courseBenefits !== (course.whatYouWillLearn || '')) return true;
+    if ((currentValues.courseCategory?._id || '') !== (course.category?._id || '')) return true;
+    if (!arraysEqual(currentValues.courseRequirements || [], course.instructions || [])) return true;
+    if (currentValues.courseImage !== (course.thumbnail || '')) return true;
+    
     return false
   }
 
@@ -107,8 +117,8 @@ export default function CourseInformationForm() {
         if (currentValues.courseBenefits !== course.whatYouWillLearn) {
           formData.append("whatYouWillLearn", data.courseBenefits)
         }
-        if (currentValues.courseCategory._id !== course.category._id) {
-          formData.append("category", data.courseCategory)
+        if (currentValues.courseCategory?._id !== course.category?._id) {
+          formData.append("category", data.courseCategory?._id || data.courseCategory)
         }
         if (
           currentValues.courseRequirements.toString() !==
