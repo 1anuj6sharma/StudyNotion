@@ -12,6 +12,14 @@ exports.createCourse = async (req, res) => {
     // Get user ID from request object
     const userId = req.user.id
 
+    // Validate request has files and required fields
+    if (!req.files || !req.files.thumbnailImage) {
+      return res.status(400).json({
+        success: false,
+        message: "Thumbnail image is required",
+      })
+    }
+
     // Get all required fields from request body
     let {
       courseName,
@@ -20,90 +28,128 @@ exports.createCourse = async (req, res) => {
       price,
       tag: _tag,
       category,
-      status,
+      status = 'Draft',
       instructions: _instructions,
     } = req.body
+
     // Get thumbnail image from request files
     const thumbnail = req.files.thumbnailImage
 
-    // Convert the tag and instructions from stringified Array to Array
-    const tag = JSON.parse(_tag)
-    const instructions = JSON.parse(_instructions)
-
-    console.log("tag", tag)
-    console.log("instructions", instructions)
-
-    // Check if any of the required fields are missing
-    if (
-      !courseName ||
-      !courseDescription ||
-      !whatYouWillLearn ||
-      !price ||
-      !tag.length ||
-      !thumbnail ||
-      !category ||
-      !instructions.length
-    ) {
+    // Validate file type
+    const allowedImageTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp']
+    if (!allowedImageTypes.includes(thumbnail.mimetype)) {
       return res.status(400).json({
         success: false,
-        message: "All Fields are Mandatory",
+        message: "Invalid file type. Please upload an image file (JPEG, PNG, JPG, WebP)."
       })
     }
+
+    // Validate file size (5MB max)
+    const maxFileSize = 5 * 1024 * 1024 // 5MB
+    if (thumbnail.size > maxFileSize) {
+      return res.status(400).json({
+        success: false,
+        message: "File is too large. Maximum size is 5MB."
+      })
+    }
+
+    // Convert the tag and instructions from stringified Array to Array
+    let tag = []
+    let instructions = []
+
+    try {
+      tag = JSON.parse(_tag || '[]')
+      instructions = JSON.parse(_instructions || '[]')
+    } catch (parseError) {
+      console.error('Error parsing JSON fields:', parseError)
+      return res.status(400).json({
+        success: false,
+        message: "Invalid format for tags or instructions. Please provide valid JSON arrays."
+      })
+    }
+
+    // Validate required fields
+    const requiredFields = [
+      { field: courseName, name: 'Course Name' },
+      { field: courseDescription, name: 'Course Description' },
+      { field: whatYouWillLearn, name: 'What You Will Learn' },
+      { field: price, name: 'Price' },
+      { field: category, name: 'Category' },
+    ]
+
+    const missingFields = requiredFields
+      .filter(({ field }) => !field)
+      .map(({ name }) => name)
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `The following fields are required: ${missingFields.join(', ')}`,
+        missingFields
+      })
+    }
+    
+    // Set default status if not provided
     if (!status || status === undefined) {
       status = "Draft"
     }
-    // Check if the user is an instructor
-    const instructorDetails = await User.findById(userId, {
-      accountType: "Instructor",
-    })
+    try {
+      // Check if the user is an instructor
+      const instructorDetails = await User.findById(userId)
+      
+      if (!instructorDetails || instructorDetails.accountType !== "Instructor") {
+        return res.status(403).json({
+          success: false,
+          message: "Only instructors can create courses",
+        })
+      }
 
-    if (!instructorDetails) {
-      return res.status(404).json({
-        success: false,
-        message: "Instructor Details Not Found",
-      })
-    }
+      // Check if the category exists
+      const categoryDetails = await Category.findById(category)
+      if (!categoryDetails) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid category selected",
+        })
+      }
 
-    // Check if the tag given is valid
-    const categoryDetails = await Category.findById(category)
-    if (!categoryDetails) {
-      return res.status(404).json({
-        success: false,
-        message: "Category Details Not Found",
-      })
-    }
-    // Upload the Thumbnail to Cloudinary
-    const thumbnailImage = await uploadImageToCloudinary(
-      thumbnail,
-      process.env.FOLDER_NAME
-    )
-    console.log(thumbnailImage)
-    // Create a new course with the given details
-    const newCourse = await Course.create({
-      courseName,
-      courseDescription,
-      instructor: instructorDetails._id,
-      whatYouWillLearn: whatYouWillLearn,
-      price,
-      tag,
-      category: categoryDetails._id,
-      thumbnail: thumbnailImage.secure_url,
-      status: status,
-      instructions,
-    })
+      // Upload the Thumbnail to Cloudinary with error handling
+      let thumbnailImage
+      try {
+        thumbnailImage = await uploadImageToCloudinary(
+          thumbnail,
+          `study-notion/courses/${instructorDetails._id}`,
+          800, // width
+          450  // height (16:9 aspect ratio)
+        )
+      } catch (uploadError) {
+        console.error('Error uploading thumbnail:', uploadError)
+        return res.status(500).json({
+          success: false,
+          message: uploadError.message || "Failed to upload thumbnail image",
+          error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+        })
+      }
 
-    // Add the new course to the User Schema of the Instructor
-    await User.findByIdAndUpdate(
-      {
-        _id: instructorDetails._id,
-      },
-      {
-        $push: {
-          courses: newCourse._id,
+      // Create a new course with the given details
+      const newCourse = await Course.create({
+        courseName: courseName.trim(),
+        courseDescription: courseDescription.trim(),
+        instructor: instructorDetails._id,
+        whatYouWillLearn: whatYouWillLearn.trim(),
+        price: parseFloat(price),
+        tag: Array.isArray(tag) ? tag : [tag],
+        category: categoryDetails._id,
+        thumbnail: {
+          url: thumbnailImage.secure_url,
+          publicId: thumbnailImage.public_id,
+          width: thumbnailImage.width,
+          height: thumbnailImage.height,
+          format: thumbnailImage.format
         },
-      },
-      { new: true }
-    )
+        status: status || 'Draft',
+        instructions: Array.isArray(instructions) ? instructions : [instructions]
+      })
     // Add the new course to the Categories
     const categoryDetails2 = await Category.findByIdAndUpdate(
       { _id: category },
@@ -477,13 +523,13 @@ exports.deleteCourse = async (req, res) => {
     // Delete the course
     await Course.findByIdAndDelete(courseId)
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Course deleted successfully",
     })
   } catch (error) {
     console.error(error)
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: "Server error",
       error: error.message,

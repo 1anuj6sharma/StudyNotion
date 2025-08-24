@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useDropzone } from "react-dropzone"
-import { FiUploadCloud } from "react-icons/fi"
-
+import { FiUploadCloud, FiX } from "react-icons/fi"
+import { toast } from "react-hot-toast"
 import "video-react/dist/video-react.css"
 import { Player } from "video-react"
 
@@ -21,28 +21,62 @@ export default function Upload({
   )
   const inputRef = useRef(null)
 
-  const onDrop = (acceptedFiles) => {
-    const file = acceptedFiles[0]
-    if (file) {
-      previewFile(file)
-      setSelectedFile(file)
+  const onDrop = (acceptedFiles, rejectedFiles) => {
+    if (rejectedFiles && rejectedFiles.length > 0) {
+      const error = rejectedFiles[0].errors[0];
+      let message = 'File upload error: ';
+      
+      if (error.code === 'file-too-large') {
+        message += 'File is too large. Maximum size is 50MB.';
+      } else if (error.code === 'file-invalid-type') {
+        message += 'Invalid file type. Please upload ' + 
+          (video ? 'a video file (.mp4)' : 'an image file (.jpg, .jpeg, .png)');
+      } else {
+        message += error.message;
+      }
+      
+      toast.error(message);
+      return;
     }
-  }
+
+    const file = acceptedFiles[0];
+    if (file) {
+      // Check file size (50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        toast.error('File is too large. Maximum size is 50MB.');
+        return;
+      }
+      
+      previewFile(file);
+      setSelectedFile(file);
+      setValue(name, file);
+    }
+  };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: !video
       ? { "image/*": [".jpeg", ".jpg", ".png"] }
       : { "video/*": [".mp4"] },
     onDrop,
-  })
+    maxSize: 50 * 1024 * 1024, // 50MB
+    multiple: false,
+  });
 
   const previewFile = (file) => {
-    // console.log(file)
     const reader = new FileReader()
     reader.readAsDataURL(file)
     reader.onloadend = () => {
       setPreviewSource(reader.result)
     }
+    reader.onerror = () => {
+      toast.error('Error reading file. Please try again.')
+    }
+  }
+  
+  const removeFile = () => {
+    setSelectedFile(null)
+    setPreviewSource("")
+    setValue(name, null)
   }
 
   useEffect(() => {

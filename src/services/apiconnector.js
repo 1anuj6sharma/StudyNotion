@@ -16,7 +16,7 @@ const getBaseUrl = () => {
 // Create axios instance with default config
 export const axiosInstance = axios.create({
   baseURL: getBaseUrl(),
-  timeout: 30000, // 30 seconds timeout
+  timeout: 60000, // 30 seconds timeout
   headers: {
     "Content-Type": "application/json",
     "Accept": "application/json",
