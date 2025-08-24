@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useDropzone } from "react-dropzone"
-import { FiUploadCloud, FiX } from "react-icons/fi"
+import { FiUploadCloud } from "react-icons/fi"
 import { toast } from "react-hot-toast"
 import "video-react/dist/video-react.css"
 import { Player } from "video-react"
@@ -73,11 +73,6 @@ export default function Upload({
     }
   }
   
-  const removeFile = () => {
-    setSelectedFile(null)
-    setPreviewSource("")
-    setValue(name, null)
-  }
 
   useEffect(() => {
     register(name, { required: true })
