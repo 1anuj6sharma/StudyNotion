@@ -41,6 +41,16 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
+// File upload middleware
+app.use(fileUpload({
+  useTempFiles: true,
+  tempFileDir: '/tmp/',
+  createParentPath: true,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max file size
+  abortOnLimit: true,
+  responseOnLimit: 'File size limit has been reached (max: 50MB)'
+}));
+
 // Log all incoming requests
 app.use((req, res, next) => {
   console.log(`Incoming ${req.method} request to ${req.originalUrl}`);

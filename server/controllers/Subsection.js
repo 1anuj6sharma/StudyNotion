@@ -7,23 +7,51 @@ const { uploadImageToCloudinary } = require("../utils/imageUploader")
 exports.createSubSection = async (req, res) => {
   try {
     // Extract necessary information from the request body
-    const { sectionId, title, description } = req.body
-    const video = req.files.video
-
-    // Check if all necessary fields are provided
-    if (!sectionId || !title || !description || !video) {
-      return res
-        .status(404)
-        .json({ success: false, message: "All Fields are Required" })
+    const { sectionId, title, description } = req.body;
+    
+    // Check if files were uploaded
+    if (!req.files || !req.files.video) {
+      return res.status(400).json({
+        success: false,
+        message: "Video file is required"
+      });
     }
-    console.log(video)
+    
+    const video = req.files.video;
+
+    // Validate required fields
+    if (!sectionId || !title || !description) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required (sectionId, title, description)"
+      });
+    }
+    
+    // Validate file type
+    const validTypes = ['video/mp4', 'video/webm', 'video/ogg'];
+    if (!validTypes.includes(video.mimetype)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid file type. Only MP4, WebM, and OGG videos are allowed"
+      });
+    }
 
     // Upload the video file to Cloudinary
-    const uploadDetails = await uploadImageToCloudinary(
-      video,
-      process.env.FOLDER_NAME
-    )
-    console.log(uploadDetails)
+    let uploadDetails;
+    try {
+      uploadDetails = await uploadImageToCloudinary(
+        video.tempFilePath || video, // Handle both temp file and direct upload
+        process.env.FOLDER_NAME || 'study-notion/videos'
+      );
+      console.log('Cloudinary upload successful:', uploadDetails);
+    } catch (uploadError) {
+      console.error('Error uploading to Cloudinary:', uploadError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to upload video to Cloudinary",
+        error: uploadError.message
+      });
+    }
     // Create a new sub-section with the necessary information
     const SubSectionDetails = await SubSection.create({
       title: title,
