@@ -1,59 +1,69 @@
-const mongoose = require("mongoose")
-const Category = require("../models/Category")
+const mongoose = require("mongoose");
+const Category = require("../models/Category");
 
 function getRandomInt(max) {
-  return Math.floor(Math.random() * max)
+  return Math.floor(Math.random() * max);
 }
 
 // ======================= CREATE CATEGORY =======================
 exports.createCategory = async (req, res) => {
   try {
-    const { name, description } = req.body
+    // Fetch data from request body
+    const { name, description } = req.body;
 
+    // Validation
     if (!name) {
       return res.status(400).json({
         success: false,
-        message: "Category name is required",
-      })
+        message: "All fields are required",
+      });
     }
 
-    const CategoryDetails = await Category.create({
+    // Check if category already exists
+    const existingCategory = await Category.findOne({ name });
+    if (existingCategory) {
+      return res.status(400).json({
+        success: false,
+        message: "Category already exists",
+      });
+    }
+
+    // Create entry in DB
+    const category = await Category.create({
       name,
       description,
-    })
-
-    console.log("Category Created:", CategoryDetails)
+    });
 
     return res.status(200).json({
       success: true,
-      message: "Category Created Successfully",
-      data: CategoryDetails,
-    })
+      message: "Category created successfully",
+      data: category,
+    });
   } catch (error) {
-    console.error("Error in createCategory:", error)
+    console.error("Error in createCategory:", error);
     return res.status(500).json({
       success: false,
       message: error.message,
-    })
+    });
   }
-}
+};
 
 // ======================= SHOW ALL CATEGORIES =======================
 exports.showAllCategories = async (req, res) => {
   try {
-    const allCategories = await Category.find()
+    const allCategories = await Category.find();
     res.status(200).json({
       success: true,
       data: allCategories,
-    })
+    });
   } catch (error) {
-    console.error("Error in showAllCategories:", error)
+    console.error("Error in showAllCategories:", error);
     return res.status(500).json({
       success: false,
       message: error.message,
-    })
+    });
   }
-}
+};
 
 // ======================= CATEGORY PAGE DETAILS =======================
 exports.categoryPageDetails = async (req, res) => {
@@ -71,9 +81,9 @@ exports.categoryPageDetails = async (req, res) => {
   });
   
   try {
-    // Validate request body
-    if (!req.body) {
-      const error = new Error('Request body is empty');
+    // Check if request body exists and has categoryId
+    if (!req.body || typeof req.body !== 'object') {
+      const error = new Error('Invalid request body');
       error.statusCode = 400;
       throw error;
     }
@@ -89,123 +99,74 @@ exports.categoryPageDetails = async (req, res) => {
 
     // Validate categoryId format
     if (!mongoose.Types.ObjectId.isValid(categoryId)) {
-      const error = new Error(`Invalid Category ID format: ${categoryId}`);
+      const error = new Error('Invalid Category ID format');
       error.statusCode = 400;
       throw error;
     }
 
-    // Get selected category + courses
-    log('Fetching category with ID from database...');
+    // Get selected category
+    log(`Fetching category with ID: ${categoryId}`);
     
-    let selectedCategory;
-    try {
-      const startTime = Date.now();
-      selectedCategory = await Category.findById(categoryId)
-        .populate({
-          path: "courses",
-          match: { status: "Published" },
-          populate: { 
-            path: "ratingAndReviews",
-            select: "rating review"
-          },
-          select: "courseName price thumbnail description instructor ratingAndReviews studentsEnrolled"
-        })
-        .lean()
-        .exec();
-
-      const queryTime = Date.now() - startTime;
-      log(`Category query completed in ${queryTime}ms`, { 
-        categoryFound: !!selectedCategory,
-        courseCount: selectedCategory?.courses?.length || 0 
-      });
-      
-      if (!selectedCategory) {
-        const error = new Error(`No category found with ID: ${categoryId}`);
-        error.statusCode = 404;
-        throw error;
-      }
-      
-      // Ensure courses array exists
-      selectedCategory.courses = selectedCategory.courses || [];
-      
-      // Log course details for debugging
-      log(`Found ${selectedCategory.courses.length} published courses`, {
-        courseIds: selectedCategory.courses.map(c => c._id)
-      });
-      
-    } catch (dbError) {
-      log('Database query failed', {
-        error: dbError.message,
-        stack: dbError.stack,
-        code: dbError.code,
-        name: dbError.name
-      });
-      
-      // Check for specific MongoDB errors
-      if (dbError.name === 'CastError') {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid category ID format',
-          error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
-        });
-      }
-      
-      // Handle other database errors
-      return res.status(dbError.statusCode || 500).json({
+    // First, get the category without populating courses to check if it exists
+    const category = await Category.findById(categoryId).lean();
+    
+    if (!category) {
+      log(`Category not found: ${categoryId}`);
+      return res.status(404).json({
         success: false,
-        message: dbError.statusCode ? dbError.message : 'Error fetching category data',
-        error: process.env.NODE_ENV === 'development' ? dbError.message : undefined,
-        code: dbError.code
+        message: 'Category not found'
       });
     }
-
-    // If no courses exist in this category
-    if (!selectedCategory.courses || selectedCategory.courses.length === 0) {
-      return res.status(200).json({
-        success: true,
-        data: {
-          selectedCategory: {
-            ...selectedCategory,
-            courses: [],
-          },
-          differentCategory: { courses: [] },
-          mostSellingCourses: [],
-        },
-        message: "No published courses found in this category.",
-      })
-    }
-
-    // Get a random different category
-    let differentCategory = { courses: [] }
-    try {
-      const categoriesExceptSelected = await Category.find({
-        _id: { $ne: categoryId },
-      }).lean()
-
-      if (categoriesExceptSelected.length > 0) {
-        const randomIndex = getRandomInt(categoriesExceptSelected.length)
-        const randomCategory = await Category.findById(
-          categoriesExceptSelected[randomIndex]._id
-        )
-          .populate({
-            path: "courses",
-            match: { status: "Published" },
-            select: "courseName price thumbnail description instructor ratingAndReviews studentsEnrolled"
-          })
-          .lean()
-          .exec()
-
-        if (randomCategory && randomCategory.courses) {
-          differentCategory = randomCategory
+    
+    // Now get the category with populated courses
+    const startTime = Date.now();
+    const populatedCategory = await Category.findById(categoryId)
+      .populate({
+        path: 'courses',
+        match: { status: 'Published' },
+        select: 'courseName price thumbnail description instructor ratingAndReviews studentsEnrolled',
+        populate: {
+          path: 'ratingAndReviews',
+          select: 'rating review'
         }
-      }
-    } catch (error) {
-      console.error("Error fetching different category:", error)
-      // Continue with empty differentCategory if there's an error
+      })
+      .lean();
+    
+    const queryTime = Date.now() - startTime;
+    log(`Category query completed in ${queryTime}ms`, {
+      categoryFound: !!populatedCategory,
+      courseCount: populatedCategory?.courses?.length || 0
+    });
+    
+    // Ensure courses array exists
+    populatedCategory.courses = populatedCategory.courses || [];
+    
+    // Log course details for debugging
+    log(`Found ${populatedCategory.courses.length} published courses`, {
+      courseIds: populatedCategory.courses.map(c => c._id)
+    });
+    
+    // Get a different random category
+    let differentCategory = { courses: [] };
+    const allCategories = await Category.find({ _id: { $ne: categoryId } }).lean();
+    
+    if (allCategories.length > 0) {
+      const randomIndex = getRandomInt(allCategories.length);
+      differentCategory = await Category.findById(allCategories[randomIndex]._id)
+        .populate({
+          path: 'courses',
+          match: { status: 'Published' },
+          select: 'courseName price thumbnail description instructor ratingAndReviews studentsEnrolled',
+          populate: {
+            path: 'ratingAndReviews',
+            select: 'rating review'
+          }
+        })
+        .lean();
     }
-
-    // Get top-selling courses across all categories
-    let mostSellingCourses = []
+    
+    // Get top-selling courses (simplified - can be enhanced with actual sales data)
+    let mostSellingCourses = [];
     try {
       const allCategories = await Category.find()
         .populate({
@@ -214,47 +175,59 @@ exports.categoryPageDetails = async (req, res) => {
           select: "courseName price thumbnail description instructor ratingAndReviews studentsEnrolled sold"
         })
         .lean()
-        .exec()
+        .exec();
 
       const allCourses = allCategories.flatMap(
         (category) => category.courses?.filter(course => course) || []
-      )
+      );
 
       mostSellingCourses = allCourses
-        .filter((course) => course && (typeof course.sold === "number" || course.studentsEnrolled?.length > 0))
+        .filter((course) => course && (typeof course.sold === "number" || (course.studentsEnrolled?.length > 0)))
         .sort((a, b) => {
-          const aSold = a.sold || a.studentsEnrolled?.length || 0
-          const bSold = b.sold || b.studentsEnrolled?.length || 0
-          return bSold - aSold
+          const aSold = a.sold || a.studentsEnrolled?.length || 0;
+          const bSold = b.sold || b.studentsEnrolled?.length || 0;
+          return bSold - aSold;
         })
-        .slice(0, 10)
+        .slice(0, 10);
     } catch (error) {
-      console.error("Error fetching most selling courses:", error)
+      log('Error fetching most selling courses:', {
+        error: error.message,
+        stack: error.stack
+      });
       // Continue with empty mostSellingCourses if there's an error
     }
-
+    
+    // Return the response
     return res.status(200).json({
       success: true,
       data: {
-        selectedCategory,
-        differentCategory,
-        mostSellingCourses,
-      },
-    })
-  } catch (error) {
-    console.error("Error in categoryPageDetails:", {
-      message: error.message,
-      stack: error.stack,
-      request: {
-        body: req.body,
-        params: req.params,
-        query: req.query
+        selectedCategory: populatedCategory,
+        differentCategory: differentCategory || { courses: [] },
+        mostSellingCourses: mostSellingCourses || []
       }
-    })
+    });
+    
+  } catch (error) {
+    log('Error in categoryPageDetails:', {
+      error: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code
+    });
+    
+    // Handle specific error types
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid category ID format'
+      });
+    }
+    
+    // Handle other errors
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
-    })
+      message: 'Error fetching category data',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
-}
+};
