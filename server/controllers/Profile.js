@@ -1,11 +1,17 @@
+const mongoose = require("mongoose")
+
+// Import models using mongoose.model() to ensure they're registered
 const Profile = require("../models/Profile")
 const CourseProgress = require("../models/CourseProgress")
-
 const Course = require("../models/Course")
 const User = require("../models/User")
 const { uploadImageToCloudinary } = require("../utils/imageUploader")
-const mongoose = require("mongoose")
 const { convertSecondsToDuration } = require("../utils/secToDuration")
+
+// Ensure models are registered with Mongoose
+require("../models/User")  // This ensures User model is registered
+require("../models/Course")  // This ensures Course model is registered
+require("../models/Section")  // This ensures Section model is registered
 // Method for updating a profile
 exports.updateProfile = async (req, res) => {
   try {
