@@ -58,6 +58,7 @@ export default function Upload({
       }
       
       previewFile(file);
+      // Pass the file object to the form
       setValue(name, file, { shouldValidate: true });
     }
   }, [name, setValue, video, previewFile]);
@@ -91,7 +92,6 @@ export default function Upload({
   }, [editData])
 
   const removeFile = useCallback(() => {
-    setSelectedFile(null);
     setPreviewSource("");
     setValue(name, null, { shouldValidate: true });
   }, [name, setValue]);
