@@ -1,9 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useDropzone } from "react-dropzone"
 import { FiUploadCloud, FiX } from "react-icons/fi"
 import { toast } from "react-hot-toast"
-import "video-react/dist/video-react.css"
-import { Player } from "video-react"
 
 export default function Upload({
   name,
@@ -18,7 +16,7 @@ export default function Upload({
   const [previewSource, setPreviewSource] = useState(
     viewData ? viewData : editData ? editData : ""
   )
-  const inputRef = useRef(null)
+  // No need for inputRef as we're using getInputProps from useDropzone
 
   const previewFile = useCallback((file) => {
     const reader = new FileReader()
@@ -57,9 +55,20 @@ export default function Upload({
         return;
       }
       
+      // Create a preview URL for the file
+      const fileUrl = URL.createObjectURL(file);
+      
+      // Store both the file object and its URL
+      const fileData = {
+        file: file,
+        preview: fileUrl,
+        name: file.name,
+        type: file.type
+      };
+      
       previewFile(file);
       // Pass the file object to the form
-      setValue(name, file, { shouldValidate: true });
+      setValue(name, fileData, { shouldValidate: true });
     }
   }, [name, setValue, video, previewFile]);
 
@@ -91,10 +100,14 @@ export default function Upload({
     }
   }, [editData])
 
-  const removeFile = useCallback(() => {
+  const removeFile = useCallback((e) => {
+    e?.stopPropagation();
     setPreviewSource("");
+    if (previewSource) {
+      URL.revokeObjectURL(previewSource); // Clean up the object URL
+    }
     setValue(name, null, { shouldValidate: true });
-  }, [name, setValue]);
+  }, [name, setValue, previewSource]);
 
   return (
     <div className="flex flex-col space-y-2">
@@ -107,7 +120,7 @@ export default function Upload({
         } flex min-h-[250px] cursor-pointer items-center justify-center rounded-md border-2 border-dotted border-richblack-500`}
         {...getRootProps()}
       >
-        <input {...getInputProps()} ref={inputRef} id={name} />
+        <input {...getInputProps()} id={name} />
         {previewSource ? (
           <div className="relative w-full h-full p-2">
             {!video ? (

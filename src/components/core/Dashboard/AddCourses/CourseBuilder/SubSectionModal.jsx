@@ -61,37 +61,61 @@ export default function SubSectionModal({
   // handle the editing of subsection
   const handleEditSubsection = async () => {
     const currentValues = getValues()
-    // console.log("changes after editing form values:", currentValues)
     const formData = new FormData()
-    // console.log("Values After Editing form values:", currentValues)
     formData.append("sectionId", modalData.sectionId)
     formData.append("subSectionId", modalData._id)
+    
     if (currentValues.lectureTitle !== modalData.title) {
       formData.append("title", currentValues.lectureTitle)
     }
+    
     if (currentValues.lectureDesc !== modalData.description) {
       formData.append("description", currentValues.lectureDesc)
     }
+    
+    // Handle file upload if video was changed
     if (currentValues.lectureVideo !== modalData.videoUrl) {
-      formData.append("video", currentValues.lectureVideo)
+      if (currentValues.lectureVideo instanceof File) {
+        formData.append("video", currentValues.lectureVideo)
+      } else if (typeof currentValues.lectureVideo === 'object' && currentValues.lectureVideo !== null) {
+        if (currentValues.lectureVideo.file) {
+          formData.append("video", currentValues.lectureVideo.file)
+        } else if (currentValues.lectureVideo.path) {
+          try {
+            const response = await fetch(currentValues.lectureVideo.path)
+            const blob = await response.blob()
+            const file = new File([blob], currentValues.lectureVideo.path.split('/').pop(), { type: blob.type })
+            formData.append("video", file)
+          } catch (error) {
+            console.error("Error processing video file:", error)
+            toast.error("Failed to process video file")
+            return
+          }
+        }
+      }
     }
+    
     setLoading(true)
-    const result = await updateSubSection(formData, token)
-    if (result) {
-      // console.log("result", result)
-      // update the structure of course
-      const updatedCourseContent = course.courseContent.map((section) =>
-        section._id === modalData.sectionId ? result : section
-      )
-      const updatedCourse = { ...course, courseContent: updatedCourseContent }
-      dispatch(setCourse(updatedCourse))
+    try {
+      const result = await updateSubSection(formData, token)
+      if (result) {
+        const updatedCourseContent = course.courseContent.map((section) =>
+          section._id === modalData.sectionId ? result : section
+        )
+        const updatedCourse = { ...course, courseContent: updatedCourseContent }
+        dispatch(setCourse(updatedCourse))
+        toast.success("Subsection updated successfully")
+      }
+    } catch (error) {
+      console.error("Error updating subsection:", error)
+      toast.error(error.response?.data?.message || "Failed to update subsection")
+    } finally {
+      setModalData(null)
+      setLoading(false)
     }
-    setModalData(null)
-    setLoading(false)
   }
 
   const onSubmit = async (data) => {
-    // console.log(data)
     if (view) return
 
     if (edit) {
@@ -107,16 +131,39 @@ export default function SubSectionModal({
     formData.append("sectionId", modalData)
     formData.append("title", data.lectureTitle)
     formData.append("description", data.lectureDesc)
-    formData.append("video", data.lectureVideo)
+    
+    // Handle file upload separately if it's a File object
+    if (data.lectureVideo instanceof File) {
+      formData.append("video", data.lectureVideo)
+    } else if (typeof data.lectureVideo === 'object' && data.lectureVideo !== null) {
+      // If it's an object with file data, try to get the actual file
+      if (data.lectureVideo.file) {
+        formData.append("video", data.lectureVideo.file)
+      } else if (data.lectureVideo.path) {
+        // Handle case where we have a file path instead of File object
+        const response = await fetch(data.lectureVideo.path)
+        const blob = await response.blob()
+        const file = new File([blob], data.lectureVideo.path.split('/').pop(), { type: blob.type })
+        formData.append("video", file)
+      }
+    }
+
     setLoading(true)
-    const result = await createSubSection(formData, token)
-    if (result) {
-      // update the structure of course
-      const updatedCourseContent = course.courseContent.map((section) =>
-        section._id === modalData ? result : section
-      )
-      const updatedCourse = { ...course, courseContent: updatedCourseContent }
-      dispatch(setCourse(updatedCourse))
+    try {
+      const result = await createSubSection(formData, token)
+      if (result) {
+        const updatedCourseContent = course.courseContent.map((section) =>
+          section._id === modalData ? result : section
+        )
+        const updatedCourse = { ...course, courseContent: updatedCourseContent }
+        dispatch(setCourse(updatedCourse))
+        toast.success("Subsection created successfully")
+      }
+    } catch (error) {
+      console.error("Error creating subsection:", error)
+      toast.error(error.response?.data?.message || "Failed to create subsection")
+    } finally {
+      setLoading(false)
     }
     setModalData(null)
     setLoading(false)
