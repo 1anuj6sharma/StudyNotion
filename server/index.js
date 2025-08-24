@@ -23,6 +23,7 @@ const PORT = process.env.PORT || 4000;
 database.connect();
 
 // Middlewares
+app.use(express.json());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
@@ -30,7 +31,20 @@ app.use(cookieParser());
 // ✅ CORS fix: allow frontend explicitly, not "*"
 app.use(
   cors({
+<<<<<<< HEAD
     origin: ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"], 
+=======
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+>>>>>>> d8825c3 (correct cors)
     credentials: true,
   })
 );
@@ -75,6 +89,7 @@ app.get("/", (req, res) => {
     message: "Your server is up and running ...",
   });
 });
+<<<<<<< HEAD
 
 // Listening to the server
 app.listen(PORT, () => {
@@ -82,3 +97,5 @@ app.listen(PORT, () => {
 });
 
 // End of code.
+=======
+>>>>>>> d8825c3 (correct cors)
