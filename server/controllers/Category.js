@@ -148,40 +148,43 @@ exports.categoryPageDetails = async (req, res) => {
       console.log(`Found ${populatedCategory.courses.length} published courses in category`);
       
       // Get a different random category with safe error handling
-      let differentCategory = { courses: [] };
+      let differentCategory = { name: 'Other Categories', courses: [] };
       try {
         // Find other categories excluding the current one
         const otherCategories = await Category.find({ 
           _id: { $ne: categoryId },
           courses: { $exists: true, $not: { $size: 0 } } // Only categories with courses
-        }).select('_id').lean();
+        }).select('_id name description').lean();
         
         if (otherCategories.length > 0) {
           const randomIndex = getRandomInt(otherCategories.length);
-          const randomCategory = await Category.findById(otherCategories[randomIndex]._id)
+          const randomCategory = otherCategories[randomIndex];
+          
+          // Get the category with populated courses
+          const populatedCategory = await Category.findById(randomCategory._id)
             .populate({
               path: 'courses',
               match: { status: 'Published' },
-              select: 'courseName price thumbnail description instructor',
+              select: 'courseName price thumbnail description instructor ratingAndReviews studentsEnrolled',
               options: { 
-                limit: 3, 
-                lean: true,
-                // Prevent population errors
-                populate: { 
-                  path: 'ratingAndReviews',
-                  options: { preserveNullAndEmptyArrays: true }
-                }
+                limit: 3,
+                lean: true
+              },
+              populate: {
+                path: 'ratingAndReviews',
+                select: 'rating review',
+                options: { lean: true }
               }
             })
-            .lean()
-            .exec();
-          
-          if (randomCategory) {
-            // Ensure courses is an array and filter out any null/undefined
+            .lean();
+            
+          if (populatedCategory) {
             differentCategory = {
-              ...randomCategory,
-              courses: Array.isArray(randomCategory.courses) 
-                ? randomCategory.courses.filter(Boolean) 
+              _id: populatedCategory._id,
+              name: populatedCategory.name,
+              description: populatedCategory.description,
+              courses: Array.isArray(populatedCategory.courses) 
+                ? populatedCategory.courses.filter(course => course !== null)
                 : []
             };
           }
@@ -194,9 +197,8 @@ exports.categoryPageDetails = async (req, res) => {
       // Get top-selling courses with safe aggregation
       let topCourses = [];
       try {
-        const result = await Category.aggregate([
-          // Only unwind if courses array exists and is not empty
-          { $match: { 'courses.0': { $exists: true } } },
+        // First, get all published courses with their enrollment counts
+        const coursesWithEnrollments = await Category.aggregate([
           { $unwind: "$courses" },
           { 
             $match: { 
@@ -204,19 +206,6 @@ exports.categoryPageDetails = async (req, res) => {
               "courses._id": { $exists: true, $ne: null }
             } 
           },
-          // Safely handle studentsEnrolled array
-          {
-            $addFields: {
-              'courses.enrolledCount': {
-                $cond: {
-                  if: { $isArray: "$courses.studentsEnrolled" },
-                  then: { $size: "$courses.studentsEnrolled" },
-                  else: 0
-                }
-              }
-            }
-          },
-          // Project only needed fields
           {
             $project: {
               _id: "$courses._id",
@@ -225,15 +214,43 @@ exports.categoryPageDetails = async (req, res) => {
               thumbnail: "$courses.thumbnail",
               description: "$courses.description",
               instructor: "$courses.instructor",
-              enrolledCount: 1
+              ratingAndReviews: "$courses.ratingAndReviews",
+              studentsEnrolled: "$courses.studentsEnrolled",
+              enrolledCount: {
+                $cond: {
+                  if: { $isArray: "$courses.studentsEnrolled" },
+                  then: { $size: "$courses.studentsEnrolled" },
+                  else: 0
+                }
+              }
             }
           },
           { $sort: { enrolledCount: -1 } },
           { $limit: 10 }
         ]);
         
-        // Ensure we have a valid array result
-        topCourses = Array.isArray(result) ? result : [];
+        // Populate ratingAndReviews for each course
+        if (coursesWithEnrollments.length > 0) {
+          const Course = require('../models/Course');
+          const courseIds = coursesWithEnrollments.map(c => c._id);
+          
+          const populatedCourses = await Course.find({ _id: { $in: courseIds } })
+            .populate({
+              path: 'ratingAndReviews',
+              select: 'rating review',
+              options: { lean: true }
+            })
+            .lean();
+          
+          // Map the populated ratingAndReviews back to the courses
+          topCourses = coursesWithEnrollments.map(course => {
+            const populatedCourse = populatedCourses.find(c => c._id.toString() === course._id.toString());
+            return {
+              ...course,
+              ratingAndReviews: populatedCourse?.ratingAndReviews || []
+            };
+          });
+        }
       } catch (error) {
         console.error('Error fetching top courses:', error);
         // Continue with empty topCourses if there's an error
