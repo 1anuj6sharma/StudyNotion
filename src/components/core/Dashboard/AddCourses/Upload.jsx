@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { useDropzone } from "react-dropzone"
-import { FiUploadCloud } from "react-icons/fi"
+import { FiUploadCloud, FiX } from "react-icons/fi"
 import { toast } from "react-hot-toast"
 import "video-react/dist/video-react.css"
 import { Player } from "video-react"
@@ -21,7 +21,7 @@ export default function Upload({
   )
   const inputRef = useRef(null)
 
-  const onDrop = (acceptedFiles, rejectedFiles) => {
+  const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
     if (rejectedFiles && rejectedFiles.length > 0) {
       const error = rejectedFiles[0].errors[0];
       let message = 'File upload error: ';
@@ -49,9 +49,9 @@ export default function Upload({
       
       previewFile(file);
       setSelectedFile(file);
-      setValue(name, file);
+      setValue(name, file, { shouldValidate: true });
     }
-  };
+  }, [name, setValue, video]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: !video
@@ -62,7 +62,7 @@ export default function Upload({
     multiple: false,
   });
 
-  const previewFile = (file) => {
+  const previewFile = useCallback((file) => {
     const reader = new FileReader()
     reader.readAsDataURL(file)
     reader.onloadend = () => {
@@ -71,18 +71,32 @@ export default function Upload({
     reader.onerror = () => {
       toast.error('Error reading file. Please try again.')
     }
-  }
+  }, [])
   
 
   useEffect(() => {
-    register(name, { required: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [register])
+    register(name, { 
+      required: 'This field is required',
+      validate: (value) => {
+        if (!value && !previewSource) {
+          return 'Please upload a file';
+        }
+        return true;
+      }
+    });
+  }, [register, name, previewSource])
 
   useEffect(() => {
-    setValue(name, selectedFile)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFile, setValue])
+    if (editData) {
+      setPreviewSource(editData);
+    }
+  }, [editData])
+
+  const removeFile = useCallback(() => {
+    setSelectedFile(null);
+    setPreviewSource("");
+    setValue(name, null, { shouldValidate: true });
+  }, [name, setValue]);
 
   return (
     <div className="flex flex-col space-y-2">
@@ -93,38 +107,51 @@ export default function Upload({
         className={`${
           isDragActive ? "bg-richblack-600" : "bg-richblack-700"
         } flex min-h-[250px] cursor-pointer items-center justify-center rounded-md border-2 border-dotted border-richblack-500`}
+        {...getRootProps()}
       >
+        <input {...getInputProps()} ref={inputRef} id={name} />
         {previewSource ? (
-          <div className="flex w-full flex-col p-6">
+          <div className="relative w-full h-full p-2">
             {!video ? (
-              <img
-                src={previewSource}
-                alt="Preview"
-                className="h-full w-full rounded-md object-cover"
-              />
+              <div className="relative w-full h-full">
+                <img
+                  src={previewSource}
+                  alt="Preview"
+                  className="h-full w-full rounded-md object-contain"
+                />
+                {!viewData && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFile();
+                    }}
+                    className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-pink-200 text-richblack-900 hover:bg-pink-100"
+                  >
+                    <FiX className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             ) : (
-              <Player aspectRatio="16:9" playsInline src={previewSource} />
-            )}
-            {!viewData && (
-              <button
-                type="button"
-                onClick={() => {
-                  setPreviewSource("")
-                  setSelectedFile(null)
-                  setValue(name, null)
-                }}
-                className="mt-3 text-richblack-400 underline"
-              >
-                Cancel
-              </button>
+              <div className="relative w-full h-full">
+                <Player aspectRatio="16:9" playsInline src={previewSource} />
+                {!viewData && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFile();
+                    }}
+                    className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-pink-200 text-richblack-900 hover:bg-pink-100"
+                  >
+                    <FiX className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             )}
           </div>
         ) : (
-          <div
-            className="flex w-full flex-col items-center p-6"
-            {...getRootProps()}
-          >
-            <input {...getInputProps()} ref={inputRef} />
+          <div className="flex w-full flex-col items-center p-6">
             <div className="grid aspect-square w-14 place-items-center rounded-full bg-pure-greys-800">
               <FiUploadCloud className="text-2xl text-yellow-50" />
             </div>
@@ -133,16 +160,17 @@ export default function Upload({
               <span className="font-semibold text-yellow-50">Browse</span> a
               file
             </p>
-            <ul className="mt-10 flex list-disc justify-between space-x-12 text-center  text-xs text-richblack-200 uppercase tracking-wider">
-              <li>Aspect ratio 16:9</li>
-              <li>Recommended size 1024x576</li>
+            <ul className="mt-4 flex flex-wrap justify-center gap-4 text-center text-xs text-richblack-200 uppercase tracking-wider">
+              <li className="whitespace-nowrap">Aspect ratio 16:9</li>
+              <li className="whitespace-nowrap">Recommended size 1024x576</li>
+              <li className="whitespace-nowrap">Max size: 50MB</li>
             </ul>
           </div>
         )}
       </div>
       {errors[name] && (
         <span className="ml-2 text-xs tracking-wide text-pink-200">
-          {label} is required
+          {errors[name].message || `${label} is required`}
         </span>
       )}
     </div>
