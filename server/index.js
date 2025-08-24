@@ -36,8 +36,18 @@ app.use(express.static(path.join(__dirname, '../build')));
 database.connect();
  
 // Middlewares
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
+
+// Log all incoming requests
+app.use((req, res, next) => {
+  console.log(`Incoming ${req.method} request to ${req.originalUrl}`);
+  if (Object.keys(req.body).length > 0) {
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+  }
+  next();
+});
 const allowedOrigins = [
   "https://study-notion-bdf.vercel.app",
   "http://localhost:3000",

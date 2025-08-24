@@ -57,47 +57,106 @@ exports.showAllCategories = async (req, res) => {
 
 // ======================= CATEGORY PAGE DETAILS =======================
 exports.categoryPageDetails = async (req, res) => {
+  const requestId = Math.random().toString(36).substring(2, 8);
+  const log = (message, data) => {
+    console.log(`[${requestId}] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  };
+
+  log('=== CATEGORY PAGE DETAILS REQUEST ===');
+  log('Request details:', {
+    method: req.method,
+    url: req.originalUrl,
+    headers: req.headers,
+    body: req.body
+  });
+  
   try {
-    console.log('Request body:', req.body); // Log the incoming request
+    // Validate request body
+    if (!req.body) {
+      const error = new Error('Request body is empty');
+      error.statusCode = 400;
+      throw error;
+    }
     
     const { categoryId } = req.body;
+    log('Extracted categoryId:', { categoryId });
 
     if (!categoryId) {
-      console.error('No categoryId provided in request');
-      return res.status(400).json({
-        success: false,
-        message: "Category ID is required",
-      });
+      const error = new Error('Category ID is required');
+      error.statusCode = 400;
+      throw error;
     }
 
     // Validate categoryId format
     if (!mongoose.Types.ObjectId.isValid(categoryId)) {
-      console.error('Invalid categoryId format:', categoryId);
-      return res.status(400).json({
-        success: false,
-        message: "Invalid Category ID format",
-      });
+      const error = new Error(`Invalid Category ID format: ${categoryId}`);
+      error.statusCode = 400;
+      throw error;
     }
 
     // Get selected category + courses
-    const selectedCategory = await Category.findById(categoryId)
-      .populate({
-        path: "courses",
-        match: { status: "Published" },
-        populate: { 
-          path: "ratingAndReviews",
-          select: "rating review"
-        },
-        select: "courseName price thumbnail description instructor ratingAndReviews studentsEnrolled"
-      })
-      .lean()
-      .exec()
+    log('Fetching category with ID from database...');
+    
+    let selectedCategory;
+    try {
+      const startTime = Date.now();
+      selectedCategory = await Category.findById(categoryId)
+        .populate({
+          path: "courses",
+          match: { status: "Published" },
+          populate: { 
+            path: "ratingAndReviews",
+            select: "rating review"
+          },
+          select: "courseName price thumbnail description instructor ratingAndReviews studentsEnrolled"
+        })
+        .lean()
+        .exec();
 
-    if (!selectedCategory) {
-      return res.status(404).json({
+      const queryTime = Date.now() - startTime;
+      log(`Category query completed in ${queryTime}ms`, { 
+        categoryFound: !!selectedCategory,
+        courseCount: selectedCategory?.courses?.length || 0 
+      });
+      
+      if (!selectedCategory) {
+        const error = new Error(`No category found with ID: ${categoryId}`);
+        error.statusCode = 404;
+        throw error;
+      }
+      
+      // Ensure courses array exists
+      selectedCategory.courses = selectedCategory.courses || [];
+      
+      // Log course details for debugging
+      log(`Found ${selectedCategory.courses.length} published courses`, {
+        courseIds: selectedCategory.courses.map(c => c._id)
+      });
+      
+    } catch (dbError) {
+      log('Database query failed', {
+        error: dbError.message,
+        stack: dbError.stack,
+        code: dbError.code,
+        name: dbError.name
+      });
+      
+      // Check for specific MongoDB errors
+      if (dbError.name === 'CastError') {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid category ID format',
+          error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+        });
+      }
+      
+      // Handle other database errors
+      return res.status(dbError.statusCode || 500).json({
         success: false,
-        message: "Category not found",
-      })
+        message: dbError.statusCode ? dbError.message : 'Error fetching category data',
+        error: process.env.NODE_ENV === 'development' ? dbError.message : undefined,
+        code: dbError.code
+      });
     }
 
     // If no courses exist in this category
