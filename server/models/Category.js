@@ -10,7 +10,7 @@ const categorySchema = new mongoose.Schema({
 	courses: [
 		{
 			type: mongoose.Schema.Types.ObjectId,
-			ref: "Course",
+			ref: "course", // Make sure this matches the model name exactly (case-sensitive)
 		},
 	],
 });
