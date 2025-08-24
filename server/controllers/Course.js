@@ -93,63 +93,63 @@ exports.createCourse = async (req, res) => {
     if (!status || status === undefined) {
       status = "Draft"
     }
-    try {
-      // Check if the user is an instructor
-      const instructorDetails = await User.findById(userId)
-      
-      if (!instructorDetails || instructorDetails.accountType !== "Instructor") {
-        return res.status(403).json({
-          success: false,
-          message: "Only instructors can create courses",
-        })
-      }
-
-      // Check if the category exists
-      const categoryDetails = await Category.findById(category)
-      if (!categoryDetails) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid category selected",
-        })
-      }
-
-      // Upload the Thumbnail to Cloudinary with error handling
-      let thumbnailImage
-      try {
-        thumbnailImage = await uploadImageToCloudinary(
-          thumbnail,
-          `study-notion/courses/${instructorDetails._id}`,
-          800, // width
-          450  // height (16:9 aspect ratio)
-        )
-      } catch (uploadError) {
-        console.error('Error uploading thumbnail:', uploadError)
-        return res.status(500).json({
-          success: false,
-          message: uploadError.message || "Failed to upload thumbnail image",
-          error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
-        })
-      }
-
-      // Create a new course with the given details
-      const newCourse = await Course.create({
-        courseName: courseName.trim(),
-        courseDescription: courseDescription.trim(),
-        instructor: instructorDetails._id,
-        whatYouWillLearn: whatYouWillLearn.trim(),
-        price: parseFloat(price),
-        tag: Array.isArray(tag) ? tag : [tag],
-        category: categoryDetails._id,
-        thumbnail: {
-          url: thumbnailImage.secure_url,
-          publicId: thumbnailImage.public_id,
-          width: thumbnailImage.width,
-          height: thumbnailImage.height,
-          format: thumbnailImage.format
-        },
-        status: status || 'Draft',
-        instructions: Array.isArray(instructions) ? instructions : [instructions]
+    
+    // Check if the user is an instructor
+    const instructorDetails = await User.findById(userId)
+    
+    if (!instructorDetails || instructorDetails.accountType !== "Instructor") {
+      return res.status(403).json({
+        success: false,
+        message: "Only instructors can create courses",
       })
+    }
+
+    // Check if the category exists
+    const categoryDetails = await Category.findById(category)
+    if (!categoryDetails) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid category selected",
+      })
+    }
+
+    // Upload the Thumbnail to Cloudinary with error handling
+    let thumbnailImage
+    try {
+      thumbnailImage = await uploadImageToCloudinary(
+        thumbnail,
+        `study-notion/courses/${instructorDetails._id}`,
+        800, // width
+        450  // height (16:9 aspect ratio)
+      )
+    } catch (uploadError) {
+      console.error('Error uploading thumbnail:', uploadError)
+      return res.status(500).json({
+        success: false,
+        message: uploadError.message || "Failed to upload thumbnail image",
+        error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+      })
+    }
+
+    // Create a new course with the given details
+    const newCourse = await Course.create({
+      courseName: courseName.trim(),
+      courseDescription: courseDescription.trim(),
+      instructor: instructorDetails._id,
+      whatYouWillLearn: whatYouWillLearn.trim(),
+      price: parseFloat(price),
+      tag: Array.isArray(tag) ? tag : [tag],
+      category: categoryDetails._id,
+      thumbnail: {
+        url: thumbnailImage.secure_url,
+        publicId: thumbnailImage.public_id,
+        width: thumbnailImage.width,
+        height: thumbnailImage.height,
+        format: thumbnailImage.format
+      },
+      status: status || 'Draft',
+      instructions: Array.isArray(instructions) ? instructions : [instructions]
+    })
     // Add the new course to the Categories
     const categoryDetails2 = await Category.findByIdAndUpdate(
       { _id: category },
