@@ -15,11 +15,21 @@ export default function Upload({
   viewData = null,
   editData = null,
 }) {
-  const [selectedFile, setSelectedFile] = useState(null)
   const [previewSource, setPreviewSource] = useState(
     viewData ? viewData : editData ? editData : ""
   )
   const inputRef = useRef(null)
+
+  const previewFile = useCallback((file) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onloadend = () => {
+      setPreviewSource(reader.result)
+    }
+    reader.onerror = () => {
+      toast.error('Error reading file. Please try again.')
+    }
+  }, [])
 
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
     if (rejectedFiles && rejectedFiles.length > 0) {
@@ -48,10 +58,9 @@ export default function Upload({
       }
       
       previewFile(file);
-      setSelectedFile(file);
       setValue(name, file, { shouldValidate: true });
     }
-  }, [name, setValue, video]);
+  }, [name, setValue, video, previewFile]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: !video
@@ -61,17 +70,6 @@ export default function Upload({
     maxSize: 50 * 1024 * 1024, // 50MB
     multiple: false,
   });
-
-  const previewFile = useCallback((file) => {
-    const reader = new FileReader()
-    reader.readAsDataURL(file)
-    reader.onloadend = () => {
-      setPreviewSource(reader.result)
-    }
-    reader.onerror = () => {
-      toast.error('Error reading file. Please try again.')
-    }
-  }, [])
   
 
   useEffect(() => {
