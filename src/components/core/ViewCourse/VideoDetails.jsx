@@ -2,13 +2,14 @@ import React, { useEffect, useRef, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useNavigate, useParams } from "react-router-dom"
 
+
+
 import "video-react/dist/video-react.css"
 import { useLocation } from "react-router-dom"
 import { BigPlayButton, ControlBar, CurrentTimeDisplay, ForwardControl, LoadingSpinner, PlaybackRateMenuButton, Player, ReplayControl, TimeDivider } from "video-react"
 
 import { markLectureAsComplete } from "../../../services/operations/courseDeatailsAPI"
 import { updateCompletedLectures } from "../../../slices/viewCourseSlice"
-import IconBtn from "../../common/IconBtn"
 import { BiSkipNextCircle, BiSkipPreviousCircle } from "react-icons/bi"
 import { MdOutlineReplayCircleFilled } from "react-icons/md"
 
@@ -23,17 +24,15 @@ const VideoDetails = () => {
     useSelector((state) => state.viewCourse)
 
   const [videoData, setVideoData] = useState([])
-  const [previewSource, setPreviewSource] = useState("")
   const [videoEnded, setVideoEnded] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [, setLoading] = useState(false) // Loading state for lecture completion
 
   useEffect(() => {
     ; (async () => {
-      if (!courseSectionData.length) return
+      if (!courseSectionData?.length) return
       if (!courseId && !sectionId && !subSectionId) {
         navigate(`/dashboard/enrolled-courses`)
       } else {
-
         const filteredData = courseSectionData.filter(
           (course) => course._id === sectionId
         )
@@ -43,11 +42,10 @@ const VideoDetails = () => {
         )
 
         setVideoData(filteredVideoData[0])
-        setPreviewSource(courseEntireData.thumbnail)
         setVideoEnded(false)
       }
     })()
-  }, [courseSectionData, courseEntireData, location.pathname])
+  }, [courseSectionData, courseEntireData, location.pathname, courseId, sectionId, subSectionId, navigate])
 
 
   const isFirstVideo = () => {

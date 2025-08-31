@@ -14,16 +14,17 @@ export default function RequirementsField({
   const [requirementsList, setRequirementsList] = useState([])
 
   useEffect(() => {
-    if (editCourse) {
-      setRequirementsList(course?.instructions)
+    if (editCourse && course?.instructions) {
+      setRequirementsList(course.instructions);
     }
-    register(name, { required: true, validate: (value) => value.length > 0 })
+  }, [editCourse, course?.instructions]);
 
-  }, [])
   useEffect(() => {
-    setValue(name, requirementsList)
-
-  }, [requirementsList])
+    register(name, { required: true, validate: (value) => value.length > 0 });
+  }, [register, name]);
+  useEffect(() => {
+    setValue(name, requirementsList, { shouldValidate: true });
+  }, [requirementsList, name, setValue]);
 
   const handleAddRequirement = () => {
     if (requirement) {

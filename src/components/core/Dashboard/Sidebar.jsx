@@ -12,7 +12,6 @@ import { useState } from 'react'
 
 
 const Sidebar = () => {
-  const { token } = useSelector(state => state.auth)
   const { user } = useSelector(state => state.profile)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();

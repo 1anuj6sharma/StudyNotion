@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import { RxCross2 } from 'react-icons/rx'
 import useOnClickOutside from '../../hooks/useOnClickOutside';
 

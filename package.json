@@ -2,35 +2,34 @@
   "name": "react-tailwind-css-starter-pack",
   "version": "0.1.0",
   "private": true,
+  "homepage": ".",
   "dependencies": {
     "@faker-js/faker": "^9.3.0",
     "@ramonak/react-progress-bar": "^5.3.0",
-    "@reduxjs/toolkit": "^2.8.2",
+    "@reduxjs/toolkit": "^1.9.5",
     "axios": "^1.7.8",
-    "bonjour-service": "^1.1.0",
     "chart.js": "^4.4.3",
-    "concurrently": "^9.1.0",
+    "concurrently": "^8.2.0",
     "copy-to-clipboard": "^3.3.3",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
-    "react-dropzone": "^14.3.5",
-    "react-hook-form": "^7.54.0",
-    "react-hot-toast": "^2.5.2",
-    "react-icons": "^5.3.0",
-    "react-markdown": "^9.0.1",
-    "react-otp-input": "^3.1.1",
+    "react-dropzone": "^14.2.3",
+    "react-hook-form": "^7.45.4",
+    "react-hot-toast": "^2.4.1",
+    "react-icons": "^4.11.0",
+    "react-markdown": "^8.0.7",
+    "react-otp-input": "^2.4.0",
     "react-rating-stars-component": "^2.2.0",
-    "react-redux": "^9.1.2",
-    "react-router-dom": "^7.0.1",
-    "react-scripts": "5.0.1",
-    "react-super-responsive-table": "^6.0.0",
-    "react-type-animation": "^3.2.0",
-    "redux-toolkit": "^1.1.2",
-    "socket.io-client": "^4.8.1",
-    "swiper": "^9.3.1",
+    "react-redux": "^8.1.2",
+    "react-router-dom": "^6.16.0",
+    "react-scripts": "^5.0.1",
+    "react-super-responsive-table": "^5.1.0",
+    "react-type-animation": "^3.0.0",
+    "socket.io-client": "^4.7.2",
+    "swiper": "^9.3.2",
     "video-react": "^0.16.0",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^3.5.0"
   },
   "repository": {
     "type": "git",
@@ -41,11 +40,14 @@
     "url": "https://github.com/thepranaygupta/react-tailwind-css-starter-pack/issues"
   },
   "scripts": {
+    "dev": "react-scripts start",
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "test": "react-scripts test",
     "eject": "react-scripts eject",
     "server": "cd server && npm run dev",
-    "dev": "concurrently -n \"client,server\" -c \"bgBlue,bgYellow\" \"npm start\" \"npm run server\""
+    "dev:fullstack": "concurrently -n \"client,server\" -c \"bgBlue,bgYellow\" \"npm start\" \"npm run server\"",
+    "vercel-build": "npm install --legacy-peer-deps && npm run build"
   },
   "eslintConfig": {
     "extends": [
@@ -65,10 +67,20 @@
       "last 1 safari version"
     ]
   },
+  "resolutions": {
+    "babel-plugin-named-assets-import": "^0.3.7"
+  },
   "devDependencies": {
+<<<<<<< HEAD
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "socket.io": "^4.8.1",
     "tailwindcss": "^3.2.7"
+=======
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.27",
+    "tailwindcss": "^3.3.3"
+>>>>>>> 636224078271eedf70b2b06fc3c4c8ccb37a73a3
   }
 }

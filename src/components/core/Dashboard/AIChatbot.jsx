@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import { FaRobot, FaPaperPlane, FaLightbulb, FaBook, FaStar } from 'react-icons/fa';
-import { BsArrowRight } from 'react-icons/bs';
 import axios from 'axios';
 import CourseRecommendation from './CourseRecommendation';
 import CourseSuggestion from './CourseSuggestion';

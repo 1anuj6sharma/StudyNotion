@@ -1,0 +1,12 @@
+# Ignore files and directories
+node_modules/
+.next/
+build/
+server/
+.env*
+*.log
+.DS_Store
+.vercel/
+.vscode/
+.idea/
+*.md

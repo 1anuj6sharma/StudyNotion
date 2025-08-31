@@ -21,18 +21,18 @@ export default function ChipInput({
   const [chips, setChips] = useState([])
 
   useEffect(() => {
-    if (editCourse) {
-
-      setChips(course?.tag)
+    if (editCourse && course?.tag) {
+      setChips(course.tag);
     }
-    register(name, { required: true, validate: (value) => value.length > 0 })
-
-  }, [])
+  }, [editCourse, course?.tag]);
 
   useEffect(() => {
-    setValue(name, chips)
+    register(name, { required: true, validate: (value) => value.length > 0 });
+  }, [register, name]);
 
-  }, [chips])
+  useEffect(() => {
+    setValue(name, chips, { shouldValidate: true });
+  }, [chips, name, setValue])
 
 
   const handleKeyDown = (event) => {

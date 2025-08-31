@@ -1,11 +1,17 @@
+const mongoose = require("mongoose")
+
+// Import models using mongoose.model() to ensure they're registered
 const Profile = require("../models/Profile")
 const CourseProgress = require("../models/CourseProgress")
-
 const Course = require("../models/Course")
 const User = require("../models/User")
 const { uploadImageToCloudinary } = require("../utils/imageUploader")
-const mongoose = require("mongoose")
 const { convertSecondsToDuration } = require("../utils/secToDuration")
+
+// Ensure models are registered with Mongoose
+require("../models/User")  // This ensures User model is registered
+require("../models/Course")  // This ensures Course model is registered
+require("../models/Section")  // This ensures Section model is registered
 // Method for updating a profile
 exports.updateProfile = async (req, res) => {
   try {
@@ -145,6 +151,7 @@ exports.updateDisplayPicture = async (req, res) => {
 
 exports.getEnrolledCourses = async (req, res) => {
   try {
+<<<<<<< HEAD
     const userId = req.user?.id
     
     if (!userId) {
@@ -166,10 +173,41 @@ exports.getEnrolledCourses = async (req, res) => {
 
     // If user has no enrolled courses, return empty array
     if (!user.courses || user.courses.length === 0) {
+=======
+    const userId = req.user.id;
+    
+    // Find user with populated courses
+    let userDetails = await User.findOne({
+      _id: userId,
+    })
+      .populate({
+        path: "courses",
+        populate: {
+          path: "courseContent",
+          populate: {
+            path: "subSection",
+          },
+        },
+      })
+      .lean()
+      .exec();
+
+    // Check if user exists
+    if (!userDetails) {
+      return res.status(404).json({
+        success: false,
+        message: `User not found with id: ${userId}`,
+      });
+    }
+
+    // Check if user has any enrolled courses
+    if (!userDetails.courses || !Array.isArray(userDetails.courses) || userDetails.courses.length === 0) {
+>>>>>>> 636224078271eedf70b2b06fc3c4c8ccb37a73a3
       return res.status(200).json({
         success: true,
         data: [],
         message: "No courses enrolled yet",
+<<<<<<< HEAD
       })
     }
 
@@ -278,8 +316,85 @@ exports.getEnrolledCourses = async (req, res) => {
       message: "Failed to fetch enrolled courses. Please try again later.",
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     })
+=======
+      });
+    }
+
+    // Process each course
+    for (let i = 0; i < userDetails.courses.length; i++) {
+      let totalDurationInSeconds = 0;
+      let SubsectionLength = 0;
+      
+      // Initialize course properties
+      userDetails.courses[i].totalDuration = "00:00";
+      userDetails.courses[i].progressPercentage = 0;
+
+      // Skip if no course content
+      if (!userDetails.courses[i].courseContent || !Array.isArray(userDetails.courses[i].courseContent)) {
+        continue;
+      }
+
+      // Calculate total duration and subsection length
+      for (let j = 0; j < userDetails.courses[i].courseContent.length; j++) {
+        const content = userDetails.courses[i].courseContent[j];
+        
+        // Skip if no subSections
+        if (!content.subSection || !Array.isArray(content.subSection)) {
+          continue;
+        }
+
+        // Calculate total duration
+        const sectionDuration = content.subSection.reduce((acc, curr) => {
+          const duration = parseInt(curr?.timeDuration) || 0;
+          return acc + (isNaN(duration) ? 0 : duration);
+        }, 0);
+
+        totalDurationInSeconds += sectionDuration;
+        SubsectionLength += content.subSection.length;
+      }
+
+      // Set total duration
+      userDetails.courses[i].totalDuration = convertSecondsToDuration(totalDurationInSeconds);
+
+      // Calculate progress percentage
+      try {
+        const progress = await CourseProgress.findOne({
+          courseID: userDetails.courses[i]._id,
+          userId: userId,
+        }).lean();
+
+        const completedVideos = progress?.completedVideos || [];
+        const completedCount = Array.isArray(completedVideos) ? completedVideos.length : 0;
+
+        if (SubsectionLength > 0) {
+          const multiplier = Math.pow(10, 2);
+          userDetails.courses[i].progressPercentage = Math.min(
+            Math.round((completedCount / SubsectionLength) * 100 * multiplier) / multiplier,
+            100 // Cap at 100%
+          );
+        } else {
+          userDetails.courses[i].progressPercentage = 100; // If no subsections, show as completed
+        }
+      } catch (progressError) {
+        console.error("Error calculating course progress:", progressError);
+        userDetails.courses[i].progressPercentage = 0;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: userDetails.courses,
+    });
+  } catch (error) {
+    console.error("Error in getEnrolledCourses:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch enrolled courses. Please try again later.",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+>>>>>>> 636224078271eedf70b2b06fc3c4c8ccb37a73a3
   }
-}
+};
 
 exports.instructorDashboard = async (req, res) => {
   try {

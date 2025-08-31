@@ -13,7 +13,6 @@ import {
   AiOutlineLogin,
   AiOutlineShoppingCart,
 } from "react-icons/ai";
-import { MdLiveTv } from "react-icons/md";
 import { BiCategory, BiDetail } from "react-icons/bi";
 import { BsChevronDown } from "react-icons/bs";
 import { GiHamburgerMenu } from "react-icons/gi";
@@ -29,7 +28,6 @@ function Navbar() {
   const location = useLocation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [loading2, setLoading2] = useState(false);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [subLinks, setSubLinks] = useState([]);
@@ -169,7 +167,7 @@ function Navbar() {
             setIsMenuModalOpen={setIsMenuModalOpen}
           >
             <div className="flex flex-col gap-y-2 py-5 px-5">
-              {(loading || loading2) && (
+              {loading && (
                 <div className="text-white font-bold">Loading ...</div>
               )}
               {token === null && (

@@ -16,7 +16,11 @@ const getBaseUrl = () => {
 // Create axios instance with default config
 export const axiosInstance = axios.create({
   baseURL: getBaseUrl(),
+<<<<<<< HEAD
   timeout: 30000, // 30 seconds timeout
+=======
+  timeout: 60000, // 30 seconds timeout
+>>>>>>> 636224078271eedf70b2b06fc3c4c8ccb37a73a3
   headers: {
     "Content-Type": "application/json",
     "Accept": "application/json",
@@ -125,6 +129,7 @@ axiosInstance.interceptors.response.use(
  */
 export const apiConnector = async (method, url, bodyData, headers, params) => {
   try {
+<<<<<<< HEAD
     const requestConfig = {
       method: method.toUpperCase(),
       url: url,
@@ -163,6 +168,27 @@ export const apiConnector = async (method, url, bodyData, headers, params) => {
       };
     }
     
+=======
+    const response = await axiosInstance({
+      method: method,
+      url: url,
+      data: bodyData,
+      headers: {
+        ...(headers || {}),
+      },
+      params: params || {},
+    });
+    
+    return response;
+  } catch (error) {
+    console.error("API Error:", {
+      url,
+      method,
+      error: error.response?.data || error.message,
+    });
+    
+    // Rethrow the error to be handled by the calling function
+>>>>>>> 636224078271eedf70b2b06fc3c4c8ccb37a73a3
     throw error;
   }
 };

@@ -19,9 +19,9 @@ export default function PublishCourse() {
 
   useEffect(() => {
     if (course?.status === COURSE_STATUS.PUBLISHED) {
-      setValue("public", true)
+      setValue("public", true, { shouldValidate: true });
     }
-  }, [])
+  }, [course?.status, setValue]);
 
   const goBack = () => {
     dispatch(setStep(2))

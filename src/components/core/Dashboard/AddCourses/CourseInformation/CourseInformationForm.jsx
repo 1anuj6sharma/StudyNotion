@@ -35,124 +35,137 @@ export default function CourseInformationForm() {
   useEffect(() => {
     const getCategories = async () => {
       setLoading(true)
-      const categories = await fetchCourseCategories()
-      if (categories.length > 0) {
-        // console.log("categories", categories)
-        setCourseCategories(categories)
+      try {
+        const categories = await fetchCourseCategories()
+        if (categories?.length > 0) {
+          setCourseCategories(categories)
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error)
+        toast.error("Failed to load course categories")
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
-    // if form is in edit mode
-    if (editCourse) {
-      // console.log("data populated", editCourse)
-      setValue("courseTitle", course.courseName)
-      setValue("courseShortDesc", course.courseDescription)
-      setValue("coursePrice", course.price)
-      setValue("courseTags", course.tag)
-      setValue("courseBenefits", course.whatYouWillLearn)
-      setValue("courseCategory", course.category)
-      setValue("courseRequirements", course.instructions)
-      setValue("courseImage", course.thumbnail)
+    
+    // if form is in edit mode and course data is available
+    if (editCourse && course) {
+      setValue("courseTitle", course.courseName || "")
+      setValue("courseShortDesc", course.courseDescription || "")
+      setValue("coursePrice", course.price || 0)
+      setValue("courseTags", course.tag || [])
+      setValue("courseBenefits", course.whatYouWillLearn || "")
+      setValue("courseCategory", course.category || "")
+      setValue("courseRequirements", course.instructions || [])
+      setValue("courseImage", course.thumbnail || "")
     }
+    
     getCategories()
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [course, editCourse, setValue])
 
   const isFormUpdated = () => {
+    if (!course) return true; // If no course data, consider form as updated to allow creation
+    
     const currentValues = getValues()
-    // console.log("changes after editing form values:", currentValues)
-    if (
-      currentValues.courseTitle !== course.courseName ||
-      currentValues.courseShortDesc !== course.courseDescription ||
-      currentValues.coursePrice !== course.price ||
-      currentValues.courseTags.toString() !== course.tag.toString() ||
-      currentValues.courseBenefits !== course.whatYouWillLearn ||
-      currentValues.courseCategory._id !== course.category._id ||
-      currentValues.courseRequirements.toString() !==
-        course.instructions.toString() ||
-      currentValues.courseImage !== course.thumbnail
-    ) {
-      return true
+    
+    // Helper function to safely compare arrays
+    const arraysEqual = (a, b) => {
+      if (!Array.isArray(a) || !Array.isArray(b)) return false;
+      if (a.length !== b.length) return false;
+      return a.every((val, index) => val === b[index]);
     }
+    
+    // Check each field for changes
+    if (currentValues.courseTitle !== (course.courseName || '')) return true;
+    if (currentValues.courseShortDesc !== (course.courseDescription || '')) return true;
+    if (Number(currentValues.coursePrice) !== Number(course.price || 0)) return true;
+    if (!arraysEqual(currentValues.courseTags || [], course.tag || [])) return true;
+    if (currentValues.courseBenefits !== (course.whatYouWillLearn || '')) return true;
+    if ((currentValues.courseCategory?._id || '') !== (course.category?._id || '')) return true;
+    if (!arraysEqual(currentValues.courseRequirements || [], course.instructions || [])) return true;
+    if (currentValues.courseImage !== (course.thumbnail || '')) return true;
+    
     return false
   }
 
   //   handle next button click
   const onSubmit = async (data) => {
-    // console.log(data)
-
-    if (editCourse) {
-      // const currentValues = getValues()
-      // console.log("changes after editing form values:", currentValues)
-      // console.log("now course:", course)
-      // console.log("Has Form Changed:", isFormUpdated())
-      if (isFormUpdated()) {
-        const currentValues = getValues()
-        const formData = new FormData()
-        // console.log(data)
-        formData.append("courseId", course._id)
+    try {
+      setLoading(true);
+      const formData = new FormData();
+      
+      if (editCourse) {
+        if (!isFormUpdated()) {
+          toast.error("No changes made to the form");
+          setLoading(false);
+          return;
+        }
+        
+        formData.append("courseId", course._id);
+        const currentValues = getValues();
+        
+        // Only append fields that have changed
         if (currentValues.courseTitle !== course.courseName) {
-          formData.append("courseName", data.courseTitle)
+          formData.append("courseName", data.courseTitle);
         }
         if (currentValues.courseShortDesc !== course.courseDescription) {
-          formData.append("courseDescription", data.courseShortDesc)
+          formData.append("courseDescription", data.courseShortDesc);
         }
-        if (currentValues.coursePrice !== course.price) {
-          formData.append("price", data.coursePrice)
+        if (Number(currentValues.coursePrice) !== Number(course.price)) {
+          formData.append("price", data.coursePrice);
         }
-        if (currentValues.courseTags.toString() !== course.tag.toString()) {
-          formData.append("tag", JSON.stringify(data.courseTags))
+        if (JSON.stringify(currentValues.courseTags) !== JSON.stringify(course.tag || [])) {
+          formData.append("tag", JSON.stringify(data.courseTags));
         }
         if (currentValues.courseBenefits !== course.whatYouWillLearn) {
-          formData.append("whatYouWillLearn", data.courseBenefits)
+          formData.append("whatYouWillLearn", data.courseBenefits);
         }
-        if (currentValues.courseCategory._id !== course.category._id) {
-          formData.append("category", data.courseCategory)
+        const categoryId = typeof data.courseCategory === 'object' ? data.courseCategory._id : data.courseCategory;
+        if (categoryId !== (course.category?._id || course.category)) {
+          formData.append("category", categoryId);
         }
-        if (
-          currentValues.courseRequirements.toString() !==
-          course.instructions.toString()
-        ) {
-          formData.append(
-            "instructions",
-            JSON.stringify(data.courseRequirements)
-          )
+        if (JSON.stringify(currentValues.courseRequirements) !== JSON.stringify(course.instructions || [])) {
+          formData.append("instructions", JSON.stringify(data.courseRequirements));
         }
         if (currentValues.courseImage !== course.thumbnail) {
-          formData.append("thumbnailImage", data.courseImage)
+          formData.append("thumbnailImage", data.courseImage);
         }
-        // console.log("Edit Form data: ", formData)
-        setLoading(true)
-        const result = await editCourseDetails(formData, token)
-        setLoading(false)
+        
+        const result = await editCourseDetails(formData, token);
         if (result) {
-          dispatch(setStep(2))
-          dispatch(setCourse(result))
+          dispatch(setStep(2));
+          dispatch(setCourse(result));
+          toast.success("Course updated successfully!");
         }
       } else {
-        toast.error("No changes made to the form")
+        // For new course creation
+        formData.append("courseName", data.courseTitle);
+        formData.append("courseDescription", data.courseShortDesc);
+        formData.append("price", data.coursePrice);
+        formData.append("tag", JSON.stringify(data.courseTags));
+        formData.append("whatYouWillLearn", data.courseBenefits);
+        formData.append("category", typeof data.courseCategory === 'object' ? data.courseCategory._id : data.courseCategory);
+        formData.append("status", COURSE_STATUS.DRAFT);
+        formData.append("instructions", JSON.stringify(data.courseRequirements));
+        
+        // Handle file upload
+        if (data.courseImage) {
+          formData.append("thumbnailImage", data.courseImage);
+        }
+        
+        const result = await addCourseDetails(formData, token);
+        if (result) {
+          dispatch(setStep(2));
+          dispatch(setCourse(result));
+          toast.success("Course created successfully!");
+        }
       }
-      return
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      toast.error(error.response?.data?.message || "Failed to save course. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    const formData = new FormData()
-    formData.append("courseName", data.courseTitle)
-    formData.append("courseDescription", data.courseShortDesc)
-    formData.append("price", data.coursePrice)
-    formData.append("tag", JSON.stringify(data.courseTags))
-    formData.append("whatYouWillLearn", data.courseBenefits)
-    formData.append("category", data.courseCategory)
-    formData.append("status", COURSE_STATUS.DRAFT)
-    formData.append("instructions", JSON.stringify(data.courseRequirements))
-    formData.append("thumbnailImage", data.courseImage)
-    setLoading(true)
-    const result = await addCourseDetails(formData, token)
-    if (result) {
-      dispatch(setStep(2))
-      dispatch(setCourse(result))
-    }
-    setLoading(false)
   }
 
   return (
@@ -258,14 +271,21 @@ export default function CourseInformationForm() {
         getValues={getValues}
       />
       {/* Course Thumbnail Image */}
-      <Upload
-        name="courseImage"
-        label="Course Thumbnail"
-        register={register}
-        setValue={setValue}
-        errors={errors}
-        editData={editCourse ? course?.thumbnail : null}
-      />
+      <div className="flex flex-col space-y-2">
+        <Upload
+          name="courseImage"
+          label="Course Thumbnail"
+          register={register}
+          setValue={setValue}
+          errors={errors}
+          editData={editCourse ? course?.thumbnail : null}
+        />
+        {errors.courseImage && (
+          <span className="ml-2 text-xs tracking-wide text-pink-200">
+            {errors.courseImage.message}
+          </span>
+        )}
+      </div>
       {/* Benefits of the course */}
       <div className="flex flex-col space-y-2">
         <label className="text-sm text-richblack-5" htmlFor="courseBenefits">

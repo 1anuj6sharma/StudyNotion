@@ -1,7 +1,5 @@
-import { useDispatch, useSelector } from "react-redux"
+import { useSelector } from "react-redux"
 import { Table, Tbody, Td, Th, Thead, Tr } from "react-super-responsive-table"
-import { convertSecondsToDuration } from "../../../../utils/secToDuration"
-import { setCourse, setEditCourse } from "../../../../slices/courseSlice"
 import "react-super-responsive-table/dist/SuperResponsiveTableStyle.css"
 import { useState } from "react"
 import { FaCheck } from "react-icons/fa"
@@ -11,21 +9,20 @@ import { RiDeleteBin6Line } from "react-icons/ri"
 import { useNavigate } from "react-router-dom"
 
 import { formatDate } from "../../../../services/formatDate"
+import { convertSecondsToDuration } from "../../../../utils/secToDuration"
+import { COURSE_STATUS } from "../../../../utils/constants"
+import ConfirmationModal from "../../../common/ConfirmationModal"
 import {
   deleteCourse,
   fetchInstructorCourses,
 } from "../../../../services/operations/courseDeatailsAPI"
-import { COURSE_STATUS } from "../../../../utils/constants"
-import ConfirmationModal from "../../../common/ConfirmationModal"
 
 export default function CoursesTable({ courses, setCourses }) {
-  const dispatch = useDispatch()
   const navigate = useNavigate()
-  const { token } = useSelector((state) => state.auth)
   const [loading, setLoading] = useState(false)
   const [confirmationModal, setConfirmationModal] = useState(null);
   const [imageErrors, setImageErrors] = useState({});
-  const TRUNCATE_LENGTH = 30;
+  const { token } = useSelector((state) => state.auth);
 
   const handleCourseDelete = async (courseId) => {
     setLoading(true)

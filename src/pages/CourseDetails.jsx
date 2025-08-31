@@ -12,8 +12,8 @@ import RatingStars from "../components/common/RatingStars"
 import CourseAccordionBar from "../components/core/Course/CourseAccordion"
 import CourseDetailsCard from "../components/core/Course/CourseDetailsCard"
 import { formatDate } from "../services/formatDate"
-import { fetchCourseDetails } from "../services/operations/courseDeatailsAPI"
 import { BuyCourse } from "../services/operations/studentFeaturesAPI"
+import { fetchCourseDetails } from "../services/operations/courseDeatailsAPI"
 import GetAvgRating from "../utils/avgRating"
 import Error from "./Error"
 
@@ -63,7 +63,7 @@ function CourseDetails() {
     setIsActive(
       !isActive.includes(id)
         ? isActive.concat([id])
-        : isActive.filter((e) => e != id)
+        : isActive.filter((e) => e !== id)
     )
   }
 
@@ -89,7 +89,6 @@ function CourseDetails() {
   }
 
   const {
-    _id: course_id,
     courseName,
     courseDescription,
     thumbnail,
