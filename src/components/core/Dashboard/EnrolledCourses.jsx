@@ -10,38 +10,75 @@ export default function EnrolledCourses() {
   const navigate = useNavigate()
 
   const [enrolledCourses, setEnrolledCourses] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  const fetchEnrolledCourses = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const res = await getUserEnrolledCourses(token)
+      
+      if (res && Array.isArray(res)) {
+        // Filter out any draft courses
+        const publishedCourses = res.filter(course => course.status !== "Draft")
+        setEnrolledCourses(publishedCourses)
+      } else {
+        setEnrolledCourses([])
+      }
+    } catch (error) {
+      console.error("Error fetching enrolled courses:", error)
+      setError("Failed to load enrolled courses. Please try again later.")
+      setEnrolledCourses([]) // Set to empty array to show empty state
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    ; (async () => {
-      try {
-        const res = await getUserEnrolledCourses(token) // Getting all the published and the drafted courses
-
-        // Filtering the published course out
-        const filterPublishCourse = res.filter((ele) => ele.status !== "Draft")
-        // console.log(
-        //   "Viewing all the couse that is Published",
-        //   filterPublishCourse
-        // )
-
-        setEnrolledCourses(filterPublishCourse)
-      } catch (error) {
-        console.log("Could not fetch enrolled courses.")
-      }
-    })()
+    if (token) {
+      fetchEnrolledCourses()
+    } else {
+      setError("Authentication required. Please log in.")
+      setLoading(false)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [token])
 
   return (
     <>
       <div className="text-3xl text-richblack-50 uppercase tracking-wider lg:text-left text-center">Enrolled Course</div>
-      {!enrolledCourses ? (
+      {loading ? (
         <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center">
           <div className="spinner"></div>
+          <p className="mt-4 text-richblack-5">Loading your courses...</p>
         </div>
-      ) : !enrolledCourses.length ? (
-        <p className="grid h-[10vh] w-full place-content-center text-richblack-5">
-          You have not enrolled in any course yet.
-        </p>
+      ) : error ? (
+        <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center">
+          <div className="text-center">
+            <p className="text-lg text-red-400 mb-4">{error}</p>
+            <button 
+              onClick={fetchEnrolledCourses}
+              className="px-4 py-2 bg-yellow-50 text-richblack-900 rounded-md hover:bg-yellow-100 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : !enrolledCourses?.length ? (
+        <div className="grid min-h-[50vh] place-items-center">
+          <p className="text-richblack-5 text-center">
+            You have not enrolled in any courses yet.
+            <br />
+            <button 
+              onClick={() => navigate("/dashboard/catalog")}
+              className="mt-2 text-yellow-50 hover:underline"
+            >
+              Browse Courses
+            </button>
+          </p>
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <div className='my-8 text-richblack-5 w-[650px] md:w-full'>

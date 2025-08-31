@@ -152,22 +152,30 @@ export const createSection = async (data, token) => {
 // create a subsection
 export const createSubSection = async (data, token) => {
   let result = null
-  const toastId = toast.loading("Loading...")
+  const toastId = toast.loading("Adding Lecture...")
   try {
     const response = await apiConnector("POST", CREATE_SUBSECTION_API, data, {
+      "Content-Type": "multipart/form-data",
       Authorization: `Bearer ${token}`,
     })
+    
     console.log("CREATE SUB-SECTION API RESPONSE............", response)
+    
     if (!response?.data?.success) {
-      throw new Error("Could Not Add Lecture")
+      throw new Error(response?.data?.message || "Could not add lecture. Please try again.")
     }
-    toast.success("Lecture Added")
+    
+    toast.success("Lecture added successfully!")
     result = response?.data?.data
   } catch (error) {
-    console.log("CREATE SUB-SECTION API ERROR............", error)
-    toast.error(error.message)
+    console.error("CREATE SUB-SECTION API ERROR............", error)
+    const errorMessage = error.response?.data?.message || error.message || "Failed to add lecture"
+    toast.error(errorMessage)
+    throw error // Re-throw to allow handling in the component if needed
+  } finally {
+    toast.dismiss(toastId)
   }
-  toast.dismiss(toastId)
+  
   return result
 }
 
@@ -196,22 +204,30 @@ export const updateSection = async (data, token) => {
 // update a subsection
 export const updateSubSection = async (data, token) => {
   let result = null
-  const toastId = toast.loading("Loading...")
+  const toastId = toast.loading("Updating Lecture...")
   try {
     const response = await apiConnector("POST", UPDATE_SUBSECTION_API, data, {
+      "Content-Type": "multipart/form-data",
       Authorization: `Bearer ${token}`,
     })
+    
     console.log("UPDATE SUB-SECTION API RESPONSE............", response)
+    
     if (!response?.data?.success) {
-      throw new Error("Could Not Update Lecture")
+      throw new Error(response?.data?.message || "Could not update lecture. Please try again.")
     }
-    toast.success("Lecture Updated")
+    
+    toast.success("Lecture updated successfully!")
     result = response?.data?.data
   } catch (error) {
-    console.log("UPDATE SUB-SECTION API ERROR............", error)
-    toast.error(error.message)
+    console.error("UPDATE SUB-SECTION API ERROR............", error)
+    const errorMessage = error.response?.data?.message || error.message || "Failed to update lecture"
+    toast.error(errorMessage)
+    throw error // Re-throw to allow handling in the component if needed
+  } finally {
+    toast.dismiss(toastId)
   }
-  toast.dismiss(toastId)
+  
   return result
 }
 

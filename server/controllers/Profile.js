@@ -145,66 +145,138 @@ exports.updateDisplayPicture = async (req, res) => {
 
 exports.getEnrolledCourses = async (req, res) => {
   try {
-    const userId = req.user.id
-    let userDetails = await User.findOne({
-      _id: userId,
-    })
-      .populate({
-        path: "courses",
-        populate: {
-          path: "courseContent",
-          populate: {
-            path: "subSection",
-          },
-        },
-      })
-      .exec()
-    userDetails = userDetails.toObject()
-    var SubsectionLength = 0
-    for (var i = 0; i < userDetails.courses.length; i++) {
-      let totalDurationInSeconds = 0
-      SubsectionLength = 0
-      for (var j = 0; j < userDetails.courses[i].courseContent.length; j++) {
-        totalDurationInSeconds += userDetails.courses[i].courseContent[
-          j
-        ].subSection.reduce((acc, curr) => acc + parseInt(curr.timeDuration), 0)
-        userDetails.courses[i].totalDuration = convertSecondsToDuration(
-          totalDurationInSeconds
-        )
-        SubsectionLength +=
-          userDetails.courses[i].courseContent[j].subSection.length
-      }
-      let courseProgressCount = await CourseProgress.findOne({
-        courseID: userDetails.courses[i]._id,
-        userId: userId,
-      })
-      courseProgressCount = courseProgressCount?.completedVideos.length
-      if (SubsectionLength === 0) {
-        userDetails.courses[i].progressPercentage = 100
-      } else {
-        // To make it up to 2 decimal point
-        const multiplier = Math.pow(10, 2)
-        userDetails.courses[i].progressPercentage =
-          Math.round(
-            (courseProgressCount / SubsectionLength) * 100 * multiplier
-          ) / multiplier
-      }
-    }
-
-    if (!userDetails) {
+    const userId = req.user?.id
+    
+    if (!userId) {
       return res.status(400).json({
         success: false,
-        message: `Could not find user with id: ${userDetails}`,
+        message: "User ID is required",
       })
     }
+
+    // Find user with basic info first
+    const user = await User.findById(userId).select('courses').lean().exec()
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      })
+    }
+
+    // If user has no enrolled courses, return empty array
+    if (!user.courses || user.courses.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        message: "No courses enrolled yet",
+      })
+    }
+
+    // Get all non-draft courses with necessary fields
+    const courses = await Course.find({
+      _id: { $in: user.courses },
+      status: { $ne: "Draft" }
+    })
+    .select('courseContent instructor courseName courseDescription price thumbnail')
+    .populate({
+      path: 'courseContent',
+      select: 'subSection',
+      populate: {
+        path: 'subSection',
+        select: 'timeDuration',
+      },
+    })
+    .populate('instructor', 'firstName lastName image')
+    .lean()
+    .exec()
+
+    if (!courses || courses.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        message: "No active courses found",
+      })
+    }
+
+    // Get all course progresses in a single query
+    const courseProgresses = await CourseProgress.find({
+      userId: userId,
+      courseID: { $in: courses.map(c => c._id) }
+    }).lean().exec()
+
+    // Create a map of courseId to progress for quick lookup
+    const progressMap = new Map(
+      courseProgresses.map(progress => [progress.courseID.toString(), progress])
+    )
+
+    // Process each course with progress
+    const coursesWithProgress = courses.map(course => {
+      if (!course) return null;
+      
+      // Calculate total duration and subsections
+      let totalDurationInSeconds = 0;
+      let totalSubsections = 0;
+      
+      if (course.courseContent && course.courseContent.length > 0) {
+        course.courseContent.forEach(content => {
+          if (content?.subSection?.length > 0) {
+            totalDurationInSeconds += content.subSection.reduce(
+              (acc, curr) => acc + (parseInt(curr?.timeDuration) || 0),
+              0
+            )
+            totalSubsections += content.subSection.length
+          }
+        })
+      }
+
+      // Get progress for this course
+      const progress = progressMap.get(course._id.toString())
+      const completedVideos = progress?.completedVideos || []
+      
+      // Calculate progress percentage
+      let progressPercentage = 0
+      if (totalSubsections > 0 && completedVideos.length > 0) {
+        progressPercentage = Math.min(
+          Math.round((completedVideos.length / totalSubsections) * 10000) / 100,
+          100 // Cap at 100%
+        )
+      } else if (totalSubsections === 0) {
+        progressPercentage = 100 // If no subsections, mark as completed
+      }
+
+      // Return course with progress info
+      const result = {
+        ...course,
+        totalDuration: convertSecondsToDuration(totalDurationInSeconds),
+        progressPercentage,
+        totalDurationInSeconds,
+        totalSubsections,
+        completedVideos: completedVideos.length
+      }
+
+      // Clean up the response by removing internal fields
+      delete result.courseContent
+      delete result.__v
+      
+      return result
+    })
+
+    // Filter out any null courses and sort by progress
+    const validCourses = coursesWithProgress
+      .filter(course => course !== null)
+      .sort((a, b) => b.progressPercentage - a.progressPercentage)
+
     return res.status(200).json({
       success: true,
-      data: userDetails.courses,
+      data: validCourses,
     })
   } catch (error) {
+    console.error('Error in getEnrolledCourses:', error)
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to fetch enrolled courses. Please try again later.",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     })
   }
 }

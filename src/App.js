@@ -192,9 +192,18 @@ function App() {
           } 
         />
         
+        {/* Live Classes Page */}
+        <Route 
+          path="/live-classes" 
+          element={
+            <PrivateRoute>
+              <LiveClasses />
+            </PrivateRoute>
+          } 
+        />
+        
         {/* 404 Page */}
         <Route path="*" element={<Error />} />
-        <Route path="/live-classes" element={<LiveClasses />} />
       </Routes>
     </div>
   )

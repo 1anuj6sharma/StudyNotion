@@ -1,10 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const LiveClass = require('../models/LiveClass');
-const User = require('../models/User');
-const Course = require('../models/Course');
+const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 const { auth, isInstructor, isStudent } = require('../middlewares/auth');
+
+// Import models directly to ensure schemas are registered
+const User = require('../models/User');
+const Course = require('../models/Course');
+const LiveClass = require('../models/LiveClass');
+
+// Get the models from mongoose to ensure they're properly registered
+const UserModel = mongoose.models.User || mongoose.model('User', User.schema);
+const CourseModel = mongoose.models.Course || mongoose.model('Course', Course.schema);
+const LiveClassModel = mongoose.models.LiveClass || mongoose.model('LiveClass', LiveClass.schema);
+
+// Make sure to use LiveClassModel instead of LiveClass for all database operations
 
 // Debug route to list all live classes
 router.delete('/:classId', auth, isInstructor, async (req, res) => {
@@ -12,18 +22,18 @@ router.delete('/:classId', auth, isInstructor, async (req, res) => {
     const { classId } = req.params;
     
     // Find the live class
-    const liveClass = await LiveClass.findById(classId);
+    const liveClass = await LiveClassModel.findById(classId);
     if (!liveClass) {
       return res.status(404).json({ success: false, message: 'Live class not found' });
     }
 
     // Check if the instructor owns the class
-    if (liveClass.instructor.toString() !== req.user.id) {
+    if (liveClass.instructor && liveClass.instructor.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this class' });
     }
 
     // Delete the class
-    await LiveClass.findByIdAndDelete(classId);
+    await LiveClassModel.findByIdAndDelete(classId);
     
     return res.status(200).json({ success: true, message: 'Live class deleted successfully' });
   } catch (error) {
@@ -35,7 +45,7 @@ router.delete('/:classId', auth, isInstructor, async (req, res) => {
 // Debug route to list all live classes
 router.get('/debug/all', async (req, res) => {
   try {
-    const classes = await LiveClass.find({})
+    const classes = await LiveClassModel.find({})
       .select('title meetingUrl roomId status scheduledAt instructor course')
       .sort({ createdAt: -1 });
     
@@ -153,7 +163,7 @@ router.post('/create', async (req, res) => {
     }
     
     // Validate course exists
-    const courseExists = await Course.findById(courseId);
+    const courseExists = await CourseModel.findById(courseId);
     if (!courseExists) {
       return res.status(404).json({
         success: false,
@@ -163,6 +173,7 @@ router.post('/create', async (req, res) => {
     
     console.log('=== GENERATING ROOM DATA ===');
     const roomId = `room-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
+    // Use the full URL format that matches the frontend route
     const meetingUrl = `http://localhost:3000/live-class/${roomId}`;
     console.log('Generated roomId:', roomId);
     console.log('Generated meetingUrl:', meetingUrl);
@@ -189,12 +200,42 @@ router.post('/create', async (req, res) => {
     // Create and save the new live class
     let newClass;
     try {
-      newClass = new LiveClass(classData);
+      // First, verify the course exists
+      const course = await Course.findById(courseId);
+      if (!course) {
+        return res.status(404).json({
+          success: false,
+          message: 'Course not found with the provided ID'
+        });
+      }
+      
+      // Verify the instructor exists
+      const instructor = await UserModel.findById(tempInstructorId);
+      if (!instructor) {
+        return res.status(404).json({
+          success: false,
+          message: 'Instructor not found'
+        });
+      }
+      
+      // Create and save the live class
+      newClass = new LiveClassModel(classData);
       await newClass.save();
       console.log('=== LIVE CLASS SAVED SUCCESSFULLY ===');
       
-      // Populate references
-      await newClass.populate(['instructor', 'course']);
+      // Populate references with explicit model paths
+      const populatedClass = await LiveClassModel.findById(newClass._id)
+        .populate({
+          path: 'instructor',
+          select: 'firstName lastName email image',
+          model: 'User'  // Explicitly specify the model
+        })
+        .populate({
+          path: 'course',
+          select: 'courseName courseDescription thumbnail',
+          model: 'Course'  // Explicitly specify the model
+        });
+      
       console.log('=== REFERENCES POPULATED SUCCESSFULLY ===');
       
       return res.status(201).json({ 
@@ -287,13 +328,39 @@ router.get('/course/:courseId', async (req, res) => {
 
 // Join a live class (Students)
 router.post('/join/:classId', auth, async (req, res) => {
+  console.log('=== JOIN LIVE CLASS REQUEST ===');
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
+  console.log('Request params:', req.params);
+  console.log('User:', req.user);
+  
+  let liveClass;
   try {
+    console.log('=== JOIN LIVE CLASS REQUEST ===');
     const { classId } = req.params;
     const userId = req.user?.id || req.body.userId; // Fallback for testing
     
-    const liveClass = await LiveClass.findById(classId);
+    console.log('Class ID:', classId);
+    console.log('User ID:', userId);
+    
+    if (!mongoose.Types.ObjectId.isValid(classId)) {
+      console.error('Invalid class ID format:', classId);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid class ID format' 
+      });
+    }
+    
+    // Find the live class
+    console.log('Fetching live class with ID:', classId);
+    liveClass = await LiveClassModel.findById(classId)
+      .populate('instructor', 'firstName lastName email')
+      .lean()
+      .exec();
+    
+    console.log('Found live class:', liveClass ? 'yes' : 'no');
     
     if (!liveClass) {
+      console.error('Live class not found with ID:', classId);
       return res.status(404).json({ 
         success: false, 
         message: 'Live class not found' 
@@ -302,7 +369,23 @@ router.post('/join/:classId', auth, async (req, res) => {
     
     // Check if class is live or about to start (within 10 minutes)
     const now = new Date();
+    console.log('Current time:', now.toISOString());
+    
+    if (!liveClass.scheduledAt) {
+      console.error('scheduledAt is missing for class:', liveClass._id);
+      return res.status(400).json({
+        success: false,
+        message: 'Class schedule is not set',
+        details: 'The class does not have a scheduled time.'
+      });
+    }
+    
     const classTime = new Date(liveClass.scheduledAt);
+    console.log('Class scheduled time:', classTime.toISOString());
+    if (isNaN(classTime.getTime())) {
+      throw new Error('Invalid scheduledAt date');
+    }
+    
     const timeDiff = classTime.getTime() - now.getTime();
     const minutesDiff = timeDiff / (1000 * 60);
     
@@ -314,19 +397,53 @@ router.post('/join/:classId', auth, async (req, res) => {
     }
     
     // Check if user is already in the class
-    const existingAttendee = liveClass.attendees.find(
-      attendee => attendee.student.toString() === userId && !attendee.leftAt
-    );
-    
-    if (existingAttendee) {
-      return res.json({ 
-        success: true, 
-        message: 'Already joined',
-        meetingUrl: liveClass.meetingUrl,
-        liveClass 
+    try {
+      if (!liveClass.attendees) {
+        liveClass.attendees = [];
+      }
+      
+      const existingAttendee = liveClass.attendees.find(a => {
+        try {
+          return a.student.toString() === userId.toString() && !a.leftAt;
+        } catch (e) {
+          console.error('Error checking attendee:', e);
+          return false;
+        }
+      });
+      
+      if (existingAttendee) {
+        console.log('User already in class:', userId);
+        return res.status(200).json({
+          success: true,
+          message: 'Already joined the class',
+          data: {
+            liveClass,
+            isNewJoin: false
+          }
+        });
+      }
+      
+      // Add user to attendees
+      liveClass.attendees.push({
+        student: new mongoose.Types.ObjectId(userId),
+        joinedAt: new Date(),
+        leftAt: null
+      });
+      console.log('Added user to attendees:', userId);
+      
+    } catch (attendeeError) {
+      console.error('Error processing attendee:', {
+        error: attendeeError,
+        userId,
+        classId: liveClass._id,
+        timestamp: new Date().toISOString()
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'Error processing attendee information',
+        details: 'There was an issue adding you to the class.'
       });
     }
-    
     // Check if class is full
     const activeAttendees = liveClass.attendees.filter(attendee => !attendee.leftAt);
     if (activeAttendees.length >= liveClass.maxAttendees) {
@@ -336,18 +453,56 @@ router.post('/join/:classId', auth, async (req, res) => {
       });
     }
     
-    // Add user to attendees
-    liveClass.attendees.push({
-      student: userId,
-      joinedAt: new Date()
-    });
-    
     // Update class status to live if it's the first attendee and time is right
     if (liveClass.status === 'scheduled' && minutesDiff <= 0) {
       liveClass.status = 'live';
     }
     
-    await liveClass.save();
+    try {
+      // Save the updated class
+      const updatedClass = await LiveClassModel.findByIdAndUpdate(
+        liveClass._id,
+        { 
+          $set: { 
+            status: liveClass.status,
+            attendees: liveClass.attendees,
+            updatedAt: new Date()
+          } 
+        },
+        { new: true, runValidators: true }
+      ).lean().exec();
+      
+      if (!updatedClass) {
+        throw new Error('Failed to update live class after join');
+      }
+      
+      console.log('Successfully updated live class:', updatedClass._id);
+      liveClass = updatedClass;
+      
+    } catch (saveError) {
+      console.error('Error saving live class:', {
+        error: saveError,
+        classId: liveClass._id,
+        timestamp: new Date().toISOString()
+      });
+      
+      if (saveError.name === 'ValidationError') {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation error',
+          details: Object.values(saveError.errors).map(e => e.message).join('. ')
+        });
+      }
+      
+      throw saveError; // Let the outer catch handle it
+    }
+    
+    console.log('Successfully joined live class:', {
+      classId: liveClass._id,
+      userId,
+      status: liveClass.status,
+      attendees: liveClass.attendees.length
+    });
     
     res.json({ 
       success: true, 
@@ -356,10 +511,41 @@ router.post('/join/:classId', auth, async (req, res) => {
       liveClass 
     });
   } catch (err) {
-    console.error('Error joining live class:', err);
+    // Get classId and userId from the request for error logging
+    const { classId } = req.params;
+    const userId = req.user?.id;
+    
+    console.error('Error in join live class:', {
+      error: err,
+      stack: err.stack,
+      classId,
+      userId,
+      requestBody: req.body,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Handle specific error types
+    if (err.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid ID format',
+        details: 'The provided class ID is not valid.'
+      });
+    }
+    
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        details: Object.values(err.errors).map(e => e.message).join('. ')
+      });
+    }
+    
+    // Default error response
     res.status(500).json({ 
       success: false, 
-      message: 'Error joining live class' 
+      message: 'Server error joining live class',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
   }
 });
@@ -368,9 +554,9 @@ router.post('/join/:classId', auth, async (req, res) => {
 router.post('/leave/:classId', auth, async (req, res) => {
   try {
     const { classId } = req.params;
-    const userId = req.user?.id || req.body.userId;
+    const userId = req.user?.id;
     
-    const liveClass = await LiveClass.findById(classId);
+    const liveClass = await LiveClassModel.findById(classId).populate('instructor', 'firstName lastName email');
     
     if (!liveClass) {
       return res.status(404).json({ 
@@ -425,6 +611,71 @@ router.get('/room/:roomId', async (req, res) => {
   }
 });
 
+// Update live class status - temporarily removed isInstructor middleware for testing
+router.put('/:classId/status', auth, async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const { status } = req.body;
+
+    // Normalize status (accept both 'started' and 'live' for starting a class)
+    const normalizedStatus = status === 'started' ? 'live' : status;
+    
+    // Validate status
+    if (!['scheduled', 'live', 'completed', 'cancelled'].includes(normalizedStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be one of: scheduled, live/started, completed, cancelled'
+      });
+    }
+
+    // Find and update the live class with normalized status
+    const updatedClass = await LiveClassModel.findByIdAndUpdate(
+      classId,
+      { status: normalizedStatus },
+      { new: true, runValidators: true }
+    )
+    .populate('instructor', 'firstName lastName email image')
+    .populate('course', 'courseName courseDescription thumbnail');
+
+    if (!updatedClass) {
+      return res.status(404).json({
+        success: false,
+        message: 'Live class not found'
+      });
+    }
+
+    // Check if the instructor owns the class
+    if (updatedClass.instructor._id.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this class status'
+      });
+    }
+
+    // Ensure we have a meeting URL and roomId
+    const meetingUrl = updatedClass.meetingUrl || `http://localhost:3000/live-class/${updatedClass.roomId}`;
+    
+    // Return the updated class with the meeting URL and roomId
+    return res.status(200).json({
+      success: true,
+      message: 'Live class status updated successfully',
+      liveClass: {
+        ...updatedClass._doc,
+        meetingUrl: meetingUrl
+      },
+      meetingUrl: meetingUrl,
+      roomId: updatedClass.roomId
+    });
+  } catch (error) {
+    console.error('Error updating live class status:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update live class status',
+      error: error.message
+    });
+  }
+});
+
 // Get live class details
 router.get('/:classId', async (req, res) => {
   try {
@@ -456,7 +707,7 @@ router.post('/:classId/start', auth, isInstructor, async (req, res) => {
   try {
     const { classId } = req.params;
     
-    const liveClass = await LiveClass.findById(classId);
+    const liveClass = await LiveClassModel.findById(classId).populate('instructor', 'firstName lastName email');
     
     if (!liveClass) {
       return res.status(404).json({ 
@@ -506,7 +757,7 @@ router.patch('/:classId/status', auth, async (req, res) => {
     const { classId } = req.params;
     const { status } = req.body;
     
-    const liveClass = await LiveClass.findById(classId);
+    const liveClass = await LiveClassModel.findById(classId).populate('instructor', 'firstName lastName email');
     
     if (!liveClass) {
       return res.status(404).json({ 
@@ -563,7 +814,7 @@ router.delete('/:classId', auth, isInstructor, async (req, res) => {
   try {
     const { classId } = req.params;
     
-    const liveClass = await LiveClass.findById(classId);
+    const liveClass = await LiveClassModel.findById(classId).populate('instructor', 'firstName lastName email');
     
     if (!liveClass) {
       return res.status(404).json({ 

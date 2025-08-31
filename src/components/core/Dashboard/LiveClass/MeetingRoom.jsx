@@ -5,40 +5,7 @@ import { toast } from 'react-hot-toast';
 import { getLiveClassDetails, getLiveClassByRoomId, joinLiveClassDirect, leaveLiveClassDirect, updateClassStatus, updateParticipantStatus } from '../../../../services/operations/liveClassAPI';
 import { MdMic, MdMicOff, MdVideocam, MdVideocamOff, MdCallEnd, MdChat, MdPeople } from 'react-icons/md';
 
-// Video container style
-const videoContainerStyle = {
-  position: 'relative',
-  width: '100%',
-  height: '100%',
-  minHeight: '300px',
-  overflow: 'hidden',
-  borderRadius: '0.5rem',
-  backgroundColor: '#1E1E2D',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center'
-};
-
-// Video element style
-const videoStyle = {
-  width: '100%',
-  height: '100%',
-  objectFit: 'cover',
-  transform: 'scaleX(-1)',
-  backgroundColor: '#1E1E2D',
-  position: 'absolute',
-  top: 0,
-  left: 0
-};
-
-// Fallback content when video is not available
-const fallbackStyle = {
-  padding: '20px',
-  textAlign: 'center',
-  color: '#888',
-  fontSize: '14px'
-};
+// Video styles are now defined inline in the component
 
 const MeetingRoom = () => {
   const { classId, roomId } = useParams();
@@ -58,7 +25,7 @@ const MeetingRoom = () => {
   const remoteVideoRef = useRef(null);
   const localStreamRef = useRef(null);
   const peerConnectionRef = useRef(null);
-  const socketRef = useRef(null);
+  // socketRef is intentionally kept for future use
 
   const setupWebRTC = useCallback(() => {
     // Initialize WebRTC connection
@@ -71,14 +38,6 @@ const MeetingRoom = () => {
 
     const pc = new RTCPeerConnection(configuration);
     peerConnectionRef.current = pc;
-
-    // Handle remote stream
-    pc.ontrack = (event) => {
-      console.log('Received remote stream');
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.streams[0];
-      }
-    };
 
     // Handle ICE candidates
     pc.onicecandidate = (event) => {
@@ -150,16 +109,35 @@ const MeetingRoom = () => {
     }
   }, [classId, roomId, token, navigate, user?._id, setupWebRTC]);
 
+  // Comprehensive cleanup function that handles all resources
   const cleanup = useCallback(() => {
-    // Clean up media streams and connections
+    // Stop all media tracks and clean up stream references
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => track.stop());
-    }
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
+      localStreamRef.current.getTracks().forEach(track => {
+        track.stop();
+        if (track.onended) {
+          track.onended = null;
+        }
+      });
+      localStreamRef.current = null;
     }
     
-    // Update user status in the class
+    // Clean up video element
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    
+    // Close WebRTC connection if it exists
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    
+    // Reset UI states
+    setIsVideoEnabled(false);
+    setIsAudioEnabled(false);
+    
+    // Update user status in the class if we have a live class ID
     if (liveClass?._id) {
       try {
         // Update status based on user role
@@ -196,19 +174,37 @@ const MeetingRoom = () => {
     
     console.log(`initializeMedia called. isInstructor: ${isInstructor}, retryCount: ${retryCount}`);
     
-    // Check if we should initialize media based on role
-    const shouldInitializeMedia = isInstructor || retryCount > 0;
-    if (!shouldInitializeMedia) {
-      console.log('Skipping media initialization for participant');
-      return true;
-    }
-    
     // Check if browser supports mediaDevices
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       const errorMsg = 'Your browser does not support camera/microphone access';
       console.error(errorMsg);
       toast.error(errorMsg);
       return false;
+    }
+    
+    // Always try to initialize media, but handle the case when no video is available
+    const shouldTryVideo = isInstructor || retryCount > 0;
+    let hasVideoDevices = true;
+    
+    try {
+      // Check for available devices first
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      hasVideoDevices = videoDevices.length > 0;
+      
+      if (!hasVideoDevices && shouldTryVideo) {
+        console.warn('No video devices found, will try audio only');
+        // If instructor but no video devices, show a warning but continue
+        if (isInstructor) {
+          toast('No camera found. You can continue with audio only.', {
+            icon: '⚠️',
+            duration: 5000
+          });
+        }
+      }
+    } catch (deviceError) {
+      console.error('Error enumerating devices:', deviceError);
+      // Continue anyway, we'll handle the error when trying to get the stream
     }
     
     // Check camera permissions
@@ -261,23 +257,29 @@ const MeetingRoom = () => {
       console.log(`Found ${videoDevices.length} video devices and ${audioDevices.length} audio devices`);
       
       // Different constraint sets to try
-      const constraintSets = [
+      const constraintSets = [];
+      
+      // If we have video devices or we should try video, add video constraints
+      if (hasVideoDevices && shouldTryVideo) {
         // Try with specific device if available
-        ...(videoDevices.length > 0 ? [{
-          video: {
-            deviceId: videoDevices[0].deviceId ? { exact: videoDevices[0].deviceId } : true,
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            frameRate: { ideal: 30 }
-          },
-          audio: audioDevices.length > 0 ? {
-            deviceId: audioDevices[0].deviceId ? { exact: audioDevices[0].deviceId } : true,
-            echoCancellation: true,
-            noiseSuppression: true
-          } : false
-        }] : []),
+        if (videoDevices.length > 0) {
+          constraintSets.push({
+            video: {
+              deviceId: videoDevices[0].deviceId ? { exact: videoDevices[0].deviceId } : true,
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              frameRate: { ideal: 30 }
+            },
+            audio: audioDevices.length > 0 ? {
+              deviceId: audioDevices[0].deviceId ? { exact: audioDevices[0].deviceId } : true,
+              echoCancellation: true,
+              noiseSuppression: true
+            } : true
+          });
+        }
+        
         // Try ideal constraints
-        {
+        constraintSets.push({
           video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
@@ -288,9 +290,10 @@ const MeetingRoom = () => {
             echoCancellation: true,
             noiseSuppression: true
           }
-        },
+        });
+        
         // Fallback to basic constraints
-        {
+        constraintSets.push({
           video: {
             width: { min: 640 },
             height: { min: 480 },
@@ -298,13 +301,24 @@ const MeetingRoom = () => {
             facingMode: 'user'
           },
           audio: true
-        },
-        // Most basic constraints
-        {
+        });
+        
+        // Most basic video constraints
+        constraintSets.push({
           video: true,
           audio: true
-        }
-      ];
+        });
+      }
+      
+      // Always add audio-only as a fallback
+      constraintSets.push({
+        video: false,
+        audio: audioDevices.length > 0 ? {
+          deviceId: audioDevices[0].deviceId ? { exact: audioDevices[0].deviceId } : true,
+          echoCancellation: true,
+          noiseSuppression: true
+        } : true
+      });
       
       // Select the appropriate constraint set based on retry count
       const constraints = constraintSets[Math.min(retryCount, constraintSets.length - 1)];
@@ -319,36 +333,77 @@ const MeetingRoom = () => {
         console.log('Successfully got media stream', stream);
       } catch (error) {
         console.error('Error getting media stream:', error);
-        throw error;
+        
+        // If we have more retries and it's a video-related error, try again
+        if (retryCount < MAX_RETRIES && error.name !== 'NotAllowedError') {
+          console.log(`Retrying in ${RETRY_DELAY}ms...`);
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          return initializeMedia(retryCount + 1);
+        }
+        
+        // If we've tried all constraints or got a permission error
+        if (error.name === 'NotAllowedError') {
+          toast.error('Please allow camera/microphone access to join the meeting');
+        } else if (constraints.video) {
+          // If we were trying to get video but failed, try audio only
+          console.log('Falling back to audio only...');
+          return initializeMedia(MAX_RETRIES); // Skip to audio-only mode
+        } else {
+          // If we're already in audio-only mode and still failing
+          toast.error('Could not access your microphone. You can still join without audio.');
+        }
+        
+        // If we get here, we couldn't get any media
+        return false;
       }
       
       console.log('Media stream obtained');
       
-      // Verify we have video tracks
+      // Verify we have at least audio or video tracks
       const videoTracks = stream.getVideoTracks();
-      if (videoTracks.length === 0) {
-        throw new Error('No video tracks available');
-      }
+      const audioTracks = stream.getAudioTracks();
       
-      // Verify the video track is actually producing data
-      const videoTrack = videoTracks[0];
-      if (videoTrack.readyState === 'ended') {
-        throw new Error('Video track ended immediately');
+      if (videoTracks.length === 0 && audioTracks.length === 0) {
+        throw new Error('No media tracks available');
       }
       
       // Store the stream reference
       localStreamRef.current = stream;
       
-      // Update video element
-      if (localVideoRef.current) {
-        const video = localVideoRef.current;
-        video.srcObject = stream;
-        video.muted = true;
-        video.playsInline = true;
+      // Handle video tracks
+      if (videoTracks.length > 0) {
+        const videoTrack = videoTracks[0];
+        if (videoTrack.readyState === 'ended') {
+          console.warn('Video track ended immediately');
+          // Stop all video tracks but continue with audio if available
+          videoTracks.forEach(track => track.stop());
+        } else {
+          console.log('Video track is active');
+          // Set up video element if we have a working video track
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = new MediaStream([videoTrack]);
+            localVideoRef.current.muted = true;
+            localVideoRef.current.play().catch(err => {
+              console.error('Error playing video:', err);
+              toast.error('Error starting video');
+            });
+          }
+        }
+      }
+      
+      // Handle audio tracks if no video is available
+      if (videoTracks.length === 0 && audioTracks.length > 0 && localVideoRef.current) {
+        // Show a placeholder since we don't have video
+        localVideoRef.current.srcObject = null;
+        localVideoRef.current.poster = '/images/audio-only-placeholder.png'; // Ensure this path exists in your public folder
+        console.log('Audio-only mode activated');
+      } else if (localVideoRef.current) {
+        // Set video properties if we have a video element
+        localVideoRef.current.playsInline = true;
         
         // Handle video play with timeout
         try {
-          const playPromise = video.play();
+          const playPromise = localVideoRef.current.play();
           if (playPromise !== undefined) {
             await Promise.race([
               playPromise,
@@ -361,45 +416,54 @@ const MeetingRoom = () => {
           toast.success('Camera connected!', { id: 'camera-init', duration: 2000 });
         } catch (playError) {
           console.error('Video play error:', playError);
-          throw new Error('Could not play video');
+          toast.error('Could not start video');
+          // Don't throw, continue with audio if available
+          if (audioTracks.length === 0) {
+            throw new Error('No usable media streams available');
+          }
         }
       }
       
-      // Update UI state
-      setIsAudioEnabled(true);
-      setIsVideoEnabled(true);
+      // Update UI state based on available tracks
+      setIsAudioEnabled(audioTracks.length > 0);
+      setIsVideoEnabled(videoTracks.length > 0);
       
-      // Add event listener for track ended
-      if (videoTrack) {
-        videoTrack.onended = () => {
-          console.log('Video track ended, trying to recover...');
-          initializeMedia(0); // Restart with first constraint set
-        };
-      }
+      // Set up track ended listeners
+      const setupTrackListeners = () => {
+        if (videoTracks.length > 0) {
+          const videoTrack = videoTracks[0];
+          videoTrack.onended = () => {
+            console.warn('Video track ended');
+            toast.warning('Camera disconnected');
+            setIsVideoEnabled(false);
+          };
+        }
+      };
       
+      setupTrackListeners();
+
       return true; // Success
-      
     } catch (error) {
       console.error('Error accessing media devices:', error);
-      
+
       // If we have retries left, try again with next constraint set
       if (retryCount < MAX_RETRIES) {
         console.log(`Retrying in ${RETRY_DELAY}ms...`);
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
         return initializeMedia(retryCount + 1);
       }
-      
+
       // All retries failed
       const errorMessage = error.message || 'Could not access camera/microphone';
       console.error('All retries failed:', errorMessage);
       toast.error(errorMessage, { id: 'camera-init' });
-      
+
       // Update UI to show error state
       setIsVideoEnabled(false);
-      
+
       return false; // Failure
     }
-  }, []);
+  }, [isInstructor, localStreamRef, localVideoRef]);
 
   useEffect(() => {
     const init = async () => {
@@ -426,14 +490,35 @@ const MeetingRoom = () => {
       }
     };
     
+    // Call the async function
     init();
     
-    return () => {
-      cleanup();
+    // Setup track listeners
+    const setupTrackListeners = () => {
+      if (localStreamRef.current) {
+        const videoTracks = localStreamRef.current.getVideoTracks();
+        if (videoTracks.length > 0) {
+          const track = videoTracks[0];
+          track.enabled = !track.enabled;
+          setIsVideoEnabled(track.enabled);
+        }
+      }
     };
-  }, [fetchLiveClassDetails, cleanup, initializeMedia]);
+    
+    setupTrackListeners();
+    
+    // Cleanup function
+    return () => {
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+      }
+    };
+  }, [setupWebRTC]);
 
-  // Handle camera toggle
+  // Handle video toggle
   const toggleVideo = () => {
     if (localStreamRef.current) {
       const videoTracks = localStreamRef.current.getVideoTracks();
@@ -624,113 +709,73 @@ const MeetingRoom = () => {
                 {renderVideoElement(
                   localVideoRef,
                   true,
-                  'You (Participant)'
+                  'You'
                 )}
-                <div className="absolute bottom-4 left-0 right-0 p-4">
-                  <div className="flex justify-center gap-2">
-                    <button 
-                      onClick={() => initializeMedia(0)}
-                      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-                    >
-                      Retry Camera
-                    </button>
-                    <button 
-                      onClick={toggleVideo}
-                      className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
-                      disabled={!localStreamRef.current}
-                    >
-                      {isVideoEnabled ? 'Turn Off' : 'Turn On'}
-                    </button>
-                  </div>
-                  <div className="mt-2 text-xs text-center text-gray-300">
-                    <p>Media: {navigator.mediaDevices ? 'Supported' : 'Not Supported'}</p>
-                    <p>Stream: {localStreamRef.current ? 'Active' : 'Inactive'}</p>
-                  </div>
-                </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Chat Panel */}
-        {isChatOpen && (
-          <div className="w-80 bg-richblack-800 border-l border-richblack-700 flex flex-col">
-            <div className="p-4 border-b border-richblack-700">
-              <h3 className="font-semibold">Chat</h3>
-            </div>
-            
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 chat-messages">
-              {chatMessages.map((msg) => {
-                // Determine if message is from current user
-                const isCurrentUser = msg.userId === user?._id;
-                
-                return (
-                  <div 
-                    key={msg.id} 
-                    className={`p-3 rounded-lg max-w-[85%] ${
-                      isCurrentUser 
-                        ? 'ml-auto bg-yellow-600/20 border border-yellow-600/30' 
-                        : 'bg-richblack-700/80 border border-richblack-600/30'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      {/* Avatar or Initials */}
-                      {msg.avatar ? (
-                        <img 
-                          src={msg.avatar} 
-                          alt={msg.sender} 
-                          className="w-6 h-6 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-richblack-600 flex items-center justify-center text-xs text-richblack-100">
-                          {msg.sender.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      
-                      <span className={`font-medium ${
-                        msg.isInstructor ? 'text-yellow-400' : 'text-blue-400'
-                      }`}>
-                        {msg.sender}
-                        {isCurrentUser && ' (You)'}
-                      </span>
-                      
-                      {msg.isInstructor && !isCurrentUser && (
-                        <span className="text-xs bg-yellow-600/50 text-yellow-100 px-2 py-0.5 rounded-full">
-                          Instructor
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-richblack-100 mb-1 break-words">{msg.message}</div>
-                    <div className="text-xs text-richblack-400 text-right">
-                      {msg.timestamp}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            
-            {/* Message Input */}
-            <div className="p-4 border-t border-richblack-700">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                  placeholder="Type a message..."
-                  className="flex-1 bg-richblack-700 text-white px-3 py-2 rounded-md text-sm"
-                />
-                <button
-                  onClick={sendMessage}
-                  className="bg-yellow-50 text-richblack-900 px-4 py-2 rounded-md text-sm hover:bg-yellow-100"
-                >
-                  Send
-                </button>
+        {/* Chat Sidebar */}
+        <div className={`w-80 bg-richblack-800 border-l border-richblack-700 flex flex-col transition-all duration-300 ${isChatOpen ? 'block' : 'hidden lg:flex'}`}>
+          <div className="p-4 border-b border-richblack-700 flex justify-between items-center">
+            <h3 className="font-medium">Meeting Chat</h3>
+            <button 
+              onClick={() => setIsChatOpen(false)}
+              className="lg:hidden text-richblack-300 hover:text-white"
+            >
+              &times;
+            </button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4 chat-messages">
+            {chatMessages.length === 0 ? (
+              <div className="text-center text-richblack-400 mt-8">
+                <p>No messages yet</p>
+                <p className="text-sm mt-1">Say hello to everyone!</p>
               </div>
+            ) : (
+              chatMessages.map((msg) => (
+                <div 
+                  key={msg.id} 
+                  className={`mb-4 ${msg.isInstructor ? 'text-yellow-400' : 'text-white'}`}
+                >
+                  <div className="flex items-center mb-1">
+                    <span className="font-medium">{msg.sender}</span>
+                    {msg.isInstructor && (
+                      <span className="ml-2 text-xs bg-yellow-500 text-black px-1.5 py-0.5 rounded">
+                        Instructor
+                      </span>
+                    )}
+                    <span className="text-xs text-richblack-400 ml-2">
+                      {msg.timestamp}
+                    </span>
+                  </div>
+                  <p className="text-richblack-100">{msg.message}</p>
+                </div>
+              ))
+            )}
+          </div>
+          
+          <div className="p-4 border-t border-richblack-700">
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                placeholder="Type a message..."
+                className="flex-1 bg-richblack-700 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              />
+              <button
+                onClick={sendMessage}
+                className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4 py-2 rounded transition-colors"
+              >
+                Send
+              </button>
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Controls */}

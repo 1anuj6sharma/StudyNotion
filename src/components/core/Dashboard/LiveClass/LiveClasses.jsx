@@ -52,17 +52,61 @@ const LiveClasses = () => {
   const handleStartClass = async (classId) => {
     try {
       const result = await startLiveClass(classId, token);
-      if (result) {
+      if (result?.success) {
         // Update the class status to 'live' in the local state
         setLiveClasses(liveClasses.map(cls => 
           cls._id === classId ? { ...cls, status: 'live' } : cls
         ));
-        // Open the meeting URL
-        window.open(result.meetingUrl, '_blank');
+        
+        // Get the meeting URL from different possible locations in the response
+        const meetingUrl = result.meetingUrl || 
+                         result.liveClass?.meetingUrl || 
+                         (result.liveClass?.roomId ? `http://localhost:3000/live-class/${result.liveClass.roomId}` : null);
+        
+        // Open the meeting URL if it exists, otherwise show a message
+        if (meetingUrl) {
+          try {
+            // Try to open the meeting URL in a new tab
+            const newWindow = window.open(meetingUrl, '_blank');
+            
+            // If the window failed to open (e.g., due to popup blocker)
+            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+              // Show a message with the meeting URL that can be copied
+              toast((t) => (
+                <div className="text-center">
+                  <p className="mb-2">Couldn't open the meeting automatically.</p>
+                  <div className="flex items-center justify-between bg-richblack-700 p-2 rounded">
+                    <code className="text-xs text-richblack-25 overflow-hidden text-ellipsis">
+                      {meetingUrl}
+                    </code>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(meetingUrl);
+                        toast.success('Link copied to clipboard!');
+                      }}
+                      className="ml-2 px-2 py-1 bg-richblack-600 text-richblack-5 rounded hover:bg-richblack-500 text-sm"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              ), {
+                duration: 10000, // Show for 10 seconds
+              });
+            }
+          } catch (windowError) {
+            console.error('Error opening meeting URL:', windowError);
+            toast.error('Could not open the meeting. Please try again.');
+          }
+        } else {
+          toast.error('Meeting URL not found in the response');
+          console.error('No meeting URL found in response:', result);
+        }
       }
     } catch (error) {
-      console.log('Error starting live class:', error);
-      toast.error('Failed to start live class');
+      console.error('Error starting live class:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to start live class';
+      toast.error(errorMessage);
     }
   };
 

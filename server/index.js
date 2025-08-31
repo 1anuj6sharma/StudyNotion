@@ -28,19 +28,48 @@ const PORT = process.env.PORT || 4000;
 // Loading environment variables from .env file
 dotenv.config();
 
+// Serve static files from the React app
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../build')));
+
 // Connecting to database
 database.connect();
  
 // Middlewares
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
+
+// Log all incoming requests
+app.use((req, res, next) => {
+  console.log(`Incoming ${req.method} request to ${req.originalUrl}`);
+  if (Object.keys(req.body).length > 0) {
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+  }
+  next();
+});
+const allowedOrigins = [
+  "https://study-notion-bdf.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:3001"
+];
+
 app.use(
-	cors({
-		origin: ["http://localhost:3000", "http://localhost:4000"],
-		credentials: true,
-		methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-		allowedHeaders: ["Content-Type", "Authorization"],
-	})
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  })
 );
 app.use(
 	fileUpload({
@@ -72,11 +101,16 @@ app.get("/", (req, res) => {
 	});
 });
 
-// Listening to the server
-app.listen(PORT, () => {
-	console.log(`App is listening at ${PORT}`);
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../build', 'index.html'));
 });
 
+// Start the server
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
 
 // Socket.io connection
 io.on('connection', (socket) => {
