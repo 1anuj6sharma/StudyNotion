@@ -910,6 +910,25 @@ router.get('/instructor/my-classes', auth, async (req, res) => {
 
 // Delete live class (Instructor only)
 router.delete('/:classId', auth, isInstructor, async (req, res) => {
+  console.log('\n=== DELETE LIVE CLASS REQUEST ===');
+  console.log('URL:', req.originalUrl);
+  console.log('Method:', req.method);
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Params:', req.params);
+  console.log('User ID:', req.user?.id);
+  console.log('==============================');
+  
+  // Set CORS headers
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS preflight');
+    return res.status(200).end();
+  }
   try {
     const { classId } = req.params;
     

@@ -350,24 +350,101 @@ export async function startLiveClass(classId, token) {
 
 // Delete a live class (Instructor only)
 export async function deleteLiveClass(classId, token) {
-  const toastId = toast.loading("Deleting Live Class...");
-  try {
-    const response = await apiConnector("DELETE", DELETE_LIVE_CLASS_API.replace(':classId', classId), null, {
-      Authorization: `Bearer ${token}`,
-    });
-
-    console.log("DELETE_LIVE_CLASS_API RESPONSE............", response);
-
-    if (!response?.data?.success) {
-      throw new Error("Could Not Delete Live Class");
-    }
-
-    toast.success("Live Class Deleted Successfully");
-    toast.dismiss(toastId);
-    return response.data;
-  } catch (error) {
-    console.log("DELETE_LIVE_CLASS_API ERROR............", error);
-    toast.dismiss(toastId);
+  const functionStart = performance.now();
+  console.log('\n=== FRONTEND: DELETE_LIVE_CLASS called ===');
+  console.log('Class ID:', classId);
+  console.log('Token exists:', !!token);
+  
+  if (!classId) {
+    const error = new Error('Class ID is required');
+    console.error('Validation error:', error);
     throw error;
+  }
+
+  const toastId = toast.loading("Deleting Live Class...");
+  const url = DELETE_LIVE_CLASS_API.replace(':classId', classId);
+  
+  console.log('Request URL:', url);
+  
+  try {
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
+    
+    console.log('Request Headers:', headers);
+    console.log('Sending DELETE request...');
+    
+    const startTime = performance.now();
+    
+    // Using fetch directly for better control
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: headers,
+      credentials: 'include',
+      mode: 'cors'
+    });
+    
+    const endTime = performance.now();
+    console.log(`Request completed in ${(endTime - startTime).toFixed(2)}ms`);
+    
+    let responseData;
+    try {
+      responseData = await response.json();
+    } catch (e) {
+      console.error('Error parsing JSON response:', e);
+      responseData = {};
+    }
+    
+    console.log('Response Status:', response.status);
+    console.log('Response Headers:', Object.fromEntries(response.headers.entries()));
+    console.log('Response Data:', responseData);
+    
+    if (!response.ok) {
+      const error = new Error(responseData.message || 'Failed to delete live class');
+      error.response = response;
+      error.status = response.status;
+      throw error;
+    }
+    
+    if (!responseData.success) {
+      throw new Error(responseData.message || 'Failed to delete live class');
+    }
+    
+    console.log('Delete successful');
+    toast.success("Live Class Deleted Successfully");
+    return responseData;
+    
+  } catch (error) {
+    console.error('=== DELETE_LIVE_CLASS ERROR ===');
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      status: error.status,
+      response: error.response,
+      stack: error.stack
+    });
+    
+    let errorMessage = 'Failed to delete live class. ';
+    
+    if (error.message.includes('Network Error')) {
+      errorMessage += 'Please check your internet connection.';
+    } else if (error.status === 401) {
+      errorMessage = 'Session expired. Please log in again.';
+    } else if (error.status === 403) {
+      errorMessage = 'You do not have permission to delete this class.';
+    } else if (error.status === 404) {
+      errorMessage = 'Live class not found or already deleted.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    toast.error(errorMessage);
+    throw error;
+    
+  } finally {
+    const functionEnd = performance.now();
+    console.log(`Total function execution time: ${(functionEnd - functionStart).toFixed(2)}ms`);
+    toast.dismiss(toastId);
   }
 }

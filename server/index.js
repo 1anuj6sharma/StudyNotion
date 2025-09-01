@@ -9,7 +9,20 @@ const fileUpload = require("express-fileupload");
 const dotenv = require("dotenv");
 const http = require('http');
 const server = http.createServer(app);
-const io = require('socket.io')(server, { cors: { origin: '*' } });
+
+// Enable CORS for Socket.IO
+const io = require('socket.io')(server, { 
+  cors: {
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'https://study-notion-bdf.vercel.app'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+  }
+});
 
 // Import models first to ensure they're registered
 require('./models');
@@ -49,36 +62,62 @@ app.use(fileUpload({
   abortOnLimit: true,
   responseOnLimit: 'File size limit has been reached (max: 50MB)'
 }));
-// Log all incoming requests
-app.use((req, res, next) => {
-  console.log(`Incoming ${req.method} request to ${req.originalUrl}`);
-  if (Object.keys(req.body).length > 0) {
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-  }
-  next();
-});
+// CORS configuration
 const allowedOrigins = [
-  "https://study-notion-bdf.vercel.app",
-  "http://localhost:3000",
-  "http://localhost:3001"
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://study-notion-bdf.vercel.app'
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps, curl, etc.)
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) === -1) {
-        const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-        return callback(new Error(msg), false);
-      }
-      return callback(null, true);
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  })
-);
+// Enable CORS for all routes
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Allow all origins in development or if origin is in allowed list
+  if (process.env.NODE_ENV === 'development' || (origin && allowedOrigins.includes(origin))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+      console.log('Handling OPTIONS preflight');
+      return res.status(200).end();
+    }
+  }
+  
+  next();
+});
+
+// Log all incoming requests
+app.use((req, res, next) => {
+  console.log(`\n=== Incoming ${req.method} request ===`);
+  console.log('URL:', req.originalUrl);
+  console.log('Origin:', req.headers.origin);
+  console.log('Method:', req.method);
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Cookies:', req.cookies);
+  
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    console.log('Body:', JSON.stringify(req.body, null, 2));
+  }
+  
+  // Log response headers before they're sent
+  const originalSend = res.send;
+  res.send = function(body) {
+    console.log('Response Headers:', this.getHeaders());
+    console.log('Response Status:', this.statusCode);
+    if (body && typeof body === 'object') {
+      console.log('Response Body:', JSON.stringify(body, null, 2));
+    } else {
+      console.log('Response Body:', body);
+    }
+    return originalSend.call(this, body);
+  };
+  
+  next();
+});
 
 // Connecting to cloudinary
 cloudinaryConnect();
