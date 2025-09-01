@@ -30,8 +30,11 @@ const liveClassSchema = new mongoose.Schema({
     required: [true, 'Scheduled time is required'],
     validate: {
       validator: function(value) {
-        // Ensure scheduled time is in the future
-        return value > new Date();
+        // Only validate if this is a new document or the scheduledAt field is being modified
+        if (this.isNew || this.isModified('scheduledAt')) {
+          return value > new Date();
+        }
+        return true; // Skip validation for existing documents when not modifying scheduledAt
       },
       message: 'Scheduled time must be in the future'
     }

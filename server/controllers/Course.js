@@ -154,10 +154,13 @@ exports.getCourseDetails = async (req, res) => {
       })
     }
 
+    // Return course details in the expected format
     return res.status(200).json({
       success: true,
       message: "Course details fetched successfully",
-      data: courseDetails,
+      data: {
+        courseDetails: courseDetails
+      }
     })
   } catch (error) {
     console.error(error)

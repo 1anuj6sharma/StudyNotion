@@ -11,6 +11,7 @@
     "chart.js": "^4.4.3",
     "concurrently": "^8.2.0",
     "copy-to-clipboard": "^3.3.3",
+    "core-js-pure": "3.45.1",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
@@ -39,15 +40,12 @@
   "bugs": {
     "url": "https://github.com/thepranaygupta/react-tailwind-css-starter-pack/issues"
   },
-  "scripts": {
-    "dev": "react-scripts start",
+   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
     "eject": "react-scripts eject",
     "server": "cd server && npm run dev",
-    "dev:fullstack": "concurrently -n \"client,server\" -c \"bgBlue,bgYellow\" \"npm start\" \"npm run server\"",
-    "vercel-build": "npm install --legacy-peer-deps && npm run build"
+    "dev": "concurrently -n \"client,server\" -c \"bgBlue,bgYellow\" \"npm start\" \"npm run server\""
   },
   "eslintConfig": {
     "extends": [
@@ -71,16 +69,15 @@
     "babel-plugin-named-assets-import": "^0.3.7"
   },
   "devDependencies": {
-<<<<<<< HEAD
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "ajv": "^8.12.0",
+    "ajv-keywords": "^5.1.0",
+    "autoprefixer": "^10.4.14",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "socket.io": "^4.8.1",
-    "tailwindcss": "^3.2.7"
-=======
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "autoprefixer": "^10.4.14",
     "postcss": "^8.4.27",
-    "tailwindcss": "^3.3.3"
->>>>>>> 636224078271eedf70b2b06fc3c4c8ccb37a73a3
+    "socket.io": "^4.8.1",
+    "tailwindcss": "^3.3.3",
+    "webpack-dev-server": "^4.15.2"
   }
 }

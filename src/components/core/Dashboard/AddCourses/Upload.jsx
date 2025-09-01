@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react"
 import { useDropzone } from "react-dropzone"
 import { FiUploadCloud, FiX } from "react-icons/fi"
 import { toast } from "react-hot-toast"
+import { Player } from "video-react"
 
 export default function Upload({
   name,

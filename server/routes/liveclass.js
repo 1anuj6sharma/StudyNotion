@@ -552,38 +552,137 @@ router.post('/join/:classId', auth, async (req, res) => {
 
 // Leave a live class
 router.post('/leave/:classId', auth, async (req, res) => {
+  let session;
   try {
     const { classId } = req.params;
     const userId = req.user?.id;
     
-    const liveClass = await LiveClassModel.findById(classId).populate('instructor', 'firstName lastName email');
+    if (!userId) {
+      console.error('No user ID found in request');
+      return res.status(401).json({ 
+        success: false, 
+        message: 'User not authenticated' 
+      });
+    }
+    
+    console.log(`User ${userId} is attempting to leave class ${classId}`);
+    
+    // Start a new session for transaction
+    session = await mongoose.startSession();
+    await session.startTransaction();
+    
+    console.log('Session and transaction started');
+    
+    const liveClass = await LiveClassModel.findById(classId)
+      .session(session)
+      .populate('instructor', '_id firstName lastName email');
     
     if (!liveClass) {
+      console.log('Live class not found');
+      await session.abortTransaction();
+      await session.endSession();
       return res.status(404).json({ 
         success: false, 
         message: 'Live class not found' 
       });
     }
     
-    // Find and update the attendee record
-    const attendee = liveClass.attendees.find(
-      att => att.student.toString() === userId && !att.leftAt
-    );
+    console.log('Found live class:', {
+      classId: liveClass._id,
+      instructorId: liveClass.instructor?._id?.toString(),
+      userId
+    });
     
-    if (attendee) {
-      attendee.leftAt = new Date();
-      await liveClass.save();
+    // Check if user is the instructor
+    const isInstructor = liveClass.instructor && 
+                        liveClass.instructor._id.toString() === userId;
+    
+    console.log('Is instructor?', isInstructor);
+    
+    if (isInstructor) {
+      console.log('Instructor is leaving - ending class');
+      
+      try {
+        // First verify the class exists
+        const classToDelete = await LiveClassModel.findById(classId).session(session);
+        if (!classToDelete) {
+          throw new Error('Class not found for deletion');
+        }
+        
+        console.log('Deleting class with ID:', classId);
+        const deleteResult = await LiveClassModel.findByIdAndDelete(classId).session(session);
+        console.log('Delete result:', deleteResult);
+        
+        if (!deleteResult) {
+          throw new Error('Failed to delete class - no document was deleted');
+        }
+        
+        // Verify deletion
+        const verifyDeletion = await LiveClassModel.findById(classId).session(session);
+        console.log('Verification after deletion:', verifyDeletion);
+        
+        await session.commitTransaction();
+        await session.endSession();
+        
+        console.log('Class ended and deleted successfully');
+        return res.json({ 
+          success: true, 
+          message: 'Class ended successfully',
+          classEnded: true
+        });
+      } catch (deleteError) {
+        console.error('Error during class deletion:', deleteError);
+        await session.abortTransaction();
+        await session.endSession();
+        throw deleteError; // This will be caught by the outer catch block
+      }
+    } else {
+      console.log('Student is leaving - marking as left');
+      // Student is leaving - mark as left
+      const attendee = liveClass.attendees.find(
+        att => att.student && att.student.toString() === userId && !att.leftAt
+      );
+      
+      if (attendee) {
+        console.log('Updating attendee status');
+        attendee.leftAt = new Date();
+        await liveClass.save({ session });
+      } else {
+        console.log('No active attendance record found for student');
+      }
+      
+      await session.commitTransaction();
+      await session.endSession();
+      
+      console.log('Student left successfully');
+      return res.json({ 
+        success: true, 
+        message: 'Successfully left the live class',
+        classEnded: false
+      });
+    }
+  } catch (err) {
+    console.error('Error in leave endpoint:', {
+      error: err.message,
+      stack: err.stack,
+      classId: req.params.classId,
+      userId: req.user?.id,
+      timestamp: new Date().toISOString()
+    });
+    
+    if (session) {
+      try {
+        await session.abortTransaction();
+        await session.endSession();
+      } catch (sessionErr) {
+        console.error('Error cleaning up session:', sessionErr);
+      }
     }
     
-    res.json({ 
-      success: true, 
-      message: 'Successfully left the live class' 
-    });
-  } catch (err) {
-    console.error('Error leaving live class:', err);
     res.status(500).json({ 
       success: false, 
-      message: 'Error leaving live class' 
+      message: 'Error processing leave request',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
   }
 });

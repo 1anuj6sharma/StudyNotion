@@ -110,52 +110,65 @@ const MeetingRoom = () => {
   }, [classId, roomId, token, navigate, user?._id, setupWebRTC]);
 
   // Comprehensive cleanup function that handles all resources
+  const isCleanupCalled = useRef(false);
+  
   const cleanup = useCallback(() => {
-    // Stop all media tracks and clean up stream references
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => {
-        track.stop();
-        if (track.onended) {
-          track.onended = null;
-        }
-      });
-      localStreamRef.current = null;
+    // Prevent multiple cleanup calls
+    if (isCleanupCalled.current) {
+      console.log('Cleanup already called, skipping');
+      return Promise.resolve();
     }
+    isCleanupCalled.current = true;
     
-    // Clean up video element
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = null;
-    }
+    console.log('Starting cleanup...');
     
-    // Close WebRTC connection if it exists
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
-    }
-    
-    // Reset UI states
-    setIsVideoEnabled(false);
-    setIsAudioEnabled(false);
-    
-    // Update user status in the class if we have a live class ID
-    if (liveClass?._id) {
+    return new Promise((resolve) => {
       try {
-        // Update status based on user role
-        const status = user?.role === 'instructor' ? 'ended' : 'left';
-        updateClassStatus(liveClass._id, status, token);
-        
-        // For students, also update participant status
-        if (user?.role !== 'instructor') {
-          updateParticipantStatus(liveClass._id, 'left', token);
+        // Clean up local media streams
+        if (localStreamRef.current) {
+          console.log('Stopping local stream tracks...');
+          localStreamRef.current.getTracks().forEach(track => {
+            try {
+              track.stop();
+              if (track.onended) {
+                track.onended = null;
+              }
+            } catch (err) {
+              console.error('Error stopping track:', err);
+            }
+          });
+          localStreamRef.current = null;
         }
+        
+        // Clean up video element
+        if (localVideoRef.current) {
+          console.log('Cleaning up video element...');
+          localVideoRef.current.srcObject = null;
+        }
+        
+        // Close WebRTC connection if it exists
+        if (peerConnectionRef.current) {
+          console.log('Closing peer connection...');
+          try {
+            peerConnectionRef.current.close();
+          } catch (err) {
+            console.error('Error closing peer connection:', err);
+          }
+          peerConnectionRef.current = null;
+        }
+        
+        // Reset UI states
+        setIsVideoEnabled(false);
+        setIsAudioEnabled(false);
+        
+        console.log('Cleanup complete');
+        resolve();
       } catch (error) {
-        console.error('Error updating status:', error);
+        console.error('Error during cleanup:', error);
+        resolve(); // Still resolve to prevent hanging
       }
-      
-      // Leave the class
-      leaveLiveClassDirect(liveClass._id, token).catch(console.error);
-    }
-  }, [liveClass?._id, token, user?.role]);
+    });
+  }, [liveClass?._id, token]);
 
   const checkCameraPermissions = async () => {
     try {
@@ -547,18 +560,28 @@ const MeetingRoom = () => {
     try {
       // Use the class ID from either the URL param or the fetched live class
       const idToUse = classId || liveClass?._id;
-      if (idToUse) {
-        await leaveLiveClassDirect(idToUse, token);
+      
+      if (!idToUse) {
+        console.error('No class ID available to leave');
+        return;
       }
-      cleanup();
+      
+      console.log('Leaving meeting with class ID:', idToUse);
+      
+      // Call cleanup first to handle local resources
+      await cleanup();
+      
+      // Then call the leave API
+      await leaveLiveClassDirect(idToUse, token);
+      
+      // Navigate away after successful leave
       navigate('/dashboard/my-live-classes');
     } catch (error) {
-      console.log('Error leaving live class:', error);
-      toast.error('Error leaving class');
+      console.error('Error in leaveMeeting:', error);
+      // Still navigate away even if there's an error
+      navigate('/dashboard/my-live-classes');
     }
   };
-
-
 
   const sendMessage = useCallback(() => {
     if (newMessage.trim()) {

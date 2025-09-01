@@ -36,16 +36,10 @@ app.use(express.static(path.join(__dirname, '../build')));
 database.connect();
 
 // Middlewares
-<<<<<<< HEAD
-=======
-app.use(express.json());
->>>>>>> 636224078271eedf70b2b06fc3c4c8ccb37a73a3
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
-<<<<<<< HEAD
-=======
 // File upload middleware
 app.use(fileUpload({
   useTempFiles: true,
@@ -55,8 +49,6 @@ app.use(fileUpload({
   abortOnLimit: true,
   responseOnLimit: 'File size limit has been reached (max: 50MB)'
 }));
-
->>>>>>> 636224078271eedf70b2b06fc3c4c8ccb37a73a3
 // Log all incoming requests
 app.use((req, res, next) => {
   console.log(`Incoming ${req.method} request to ${req.originalUrl}`);
@@ -76,11 +68,6 @@ app.use(
     origin: function (origin, callback) {
       // Allow requests with no origin (like mobile apps, curl, etc.)
       if (!origin) return callback(null, true);
-<<<<<<< HEAD
-      
-=======
-
->>>>>>> 636224078271eedf70b2b06fc3c4c8ccb37a73a3
       if (allowedOrigins.indexOf(origin) === -1) {
         const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
         return callback(new Error(msg), false);
@@ -91,12 +78,6 @@ app.use(
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   })
-);
-app.use(
-	fileUpload({
-		useTempFiles: true,
-		tempFileDir: "/tmp/",
-	})
 );
 
 // Connecting to cloudinary
