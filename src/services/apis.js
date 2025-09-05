@@ -1,9 +1,14 @@
-let BASE_URL = process.env.REACT_APP_BASE_URL || 'http://localhost:4000';
+// Get the base URL from environment variables or use defaults
+let BASE_URL = process.env.REACT_APP_API_URL || 
+               process.env.REACT_APP_BASE_URL ||
+               (process.env.NODE_ENV === 'production'
+                 ? 'https://your-backend-api.vercel.app/api/v1'
+                 : 'http://localhost:4000/api/v1');
 
-// Remove trailing slash from base URL to prevent URL duplication
-if (BASE_URL.endsWith('/')) {
-  BASE_URL = BASE_URL.slice(0, -1);
-}
+// Ensure BASE_URL doesn't end with a slash
+BASE_URL = BASE_URL.endsWith('/') ? BASE_URL.slice(0, -1) : BASE_URL;
+
+console.log('Using API Base URL:', BASE_URL);
 
 // AUTH ENDPOINTS
 export const endpoints = {

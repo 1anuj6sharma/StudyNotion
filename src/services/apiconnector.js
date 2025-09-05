@@ -3,14 +3,12 @@ import { toast } from "react-hot-toast";
 
 // Helper function to get the base URL
 const getBaseUrl = () => {
-  // Check if we're in development mode
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  
-  // If REACT_APP_BASE_URL is set, use it, otherwise use the default
-  return process.env.REACT_APP_BASE_URL || 
-    (isDevelopment 
-      ? 'http://localhost:4000/api/v1' 
-      : 'https://studynotion-backend-g7ip.onrender.com/api/v1');
+  // Use REACT_APP_API_URL if set, otherwise use REACT_APP_BASE_URL, otherwise use defaults
+  return process.env.REACT_APP_API_URL || 
+         process.env.REACT_APP_BASE_URL ||
+         (process.env.NODE_ENV === 'production'
+           ? 'https://your-backend-api.vercel.app/api/v1'
+           : 'http://localhost:4000/api/v1');
 };
 
 // Create axios instance with default config

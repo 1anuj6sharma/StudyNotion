@@ -20,25 +20,63 @@ const {
 export async function createLiveClass(data, token) {
   const toastId = toast.loading("Creating Live Class...");
   try {
-    // Use the real create endpoint with authentication
-    const response = await apiConnector("POST", CREATE_LIVE_CLASS_API, data, {
-      Authorization: `Bearer ${token}`,
-    });
-
-    console.log("CREATE_LIVE_CLASS_API RESPONSE............", response);
-
-    if (!response?.data?.success) {
-      throw new Error("Could Not Create Live Class");
+    console.log("Creating live class with data:", JSON.stringify(data, null, 2));
+    
+    // Ensure we have a valid token
+    if (!token) {
+      throw new Error("Authentication token is missing");
     }
 
-    toast.success("Live Class Created Successfully");
-    toast.dismiss(toastId);
-    return response.data.liveClass;
+    // Add timestamp if not present
+    const classData = {
+      ...data,
+      scheduledTime: data.scheduledTime || new Date().toISOString(),
+      scheduledAt: data.scheduledAt || new Date().toISOString(),
+    };
+
+    console.log("Sending request to:", CREATE_LIVE_CLASS_API);
+    const response = await apiConnector("POST", CREATE_LIVE_CLASS_API, classData, {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    });
+
+    console.log("CREATE_LIVE_CLASS_API RESPONSE:", response);
+
+    if (!response) {
+      throw new Error("No response received from server");
+    }
+
+    // Handle different response statuses
+    if (response.status === 401) {
+      throw new Error("Authentication failed. Please log in again.");
+    }
+
+    if (response.status === 400) {
+      const errorMsg = response.data?.message || "Invalid request data";
+      throw new Error(errorMsg);
+    }
+
+    if (response.status === 500) {
+      throw new Error("Server error. Please try again later.");
+    }
+
+    if (!response.data || !response.data.success) {
+      const errorMsg = response.data?.message || "Failed to create live class";
+      throw new Error(errorMsg);
+    }
+
+    toast.success("Live Class Created Successfully!");
+    return response.data.liveClass || response.data; // Handle both response formats
   } catch (error) {
-    console.log("CREATE_LIVE_CLASS_API ERROR............", error);
-    toast.error(error.response?.data?.message || "Could Not Create Live Class");
-    toast.dismiss(toastId);
+    console.error("CREATE_LIVE_CLASS_API ERROR:", error);
+    const errorMessage = error.response?.data?.message || 
+                        error.message || 
+                        "An error occurred while creating the live class";
+    
+    toast.error(errorMessage);
     throw error;
+  } finally {
+    toast.dismiss(toastId);
   }
 }
 

@@ -4,11 +4,23 @@
     {
       "src": "package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "build" }
+      "config": { 
+        "distDir": "build",
+        "env": {
+          "NODE_ENV": "production"
+        }
+      }
     }
   ],
   "routes": [
+    { "src": "/api/(.*)", "dest": "https://your-backend-api.vercel.app/api/$1" },
     { "handle": "filesystem" },
-    { "src": "/.*", "dest": "/index.html" }
-  ]
+    { "src": "/static/(.*)", "dest": "/static/$1" },
+    { "src": "/favicon.ico", "dest": "/favicon.ico" },
+    { "src": "/manifest.json", "dest": "/manifest.json" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ],
+  "env": {
+    "REACT_APP_BASE_URL": "https://your-backend-api.vercel.app/api/v1"
+  }
 }
