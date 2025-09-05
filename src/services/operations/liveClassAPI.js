@@ -20,27 +20,32 @@ const {
 export async function createLiveClass(data, token) {
   const toastId = toast.loading("Creating Live Class...");
   try {
-    console.log("Creating live class with data:", JSON.stringify(data, null, 2));
+    console.log('Creating live class with data:', data);
     
     // Ensure we have a valid token
     if (!token) {
       throw new Error("Authentication token is missing");
     }
 
-    // Add timestamp if not present
-    const classData = {
+    // Prepare the request
+    const requestData = {
       ...data,
       scheduledTime: data.scheduledTime || new Date().toISOString(),
       scheduledAt: data.scheduledAt || new Date().toISOString(),
     };
 
-    console.log("Sending request to:", CREATE_LIVE_CLASS_API);
-    const response = await apiConnector("POST", CREATE_LIVE_CLASS_API, classData, {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    });
+    console.log('Sending request to:', CREATE_LIVE_CLASS_API);
+    const response = await apiConnector(
+      "POST", 
+      CREATE_LIVE_CLASS_API, 
+      requestData,
+      {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    );
 
-    console.log("CREATE_LIVE_CLASS_API RESPONSE:", response);
+    console.log('API Response:', response);
 
     if (!response) {
       throw new Error("No response received from server");
@@ -66,7 +71,7 @@ export async function createLiveClass(data, token) {
     }
 
     toast.success("Live Class Created Successfully!");
-    return response.data.liveClass || response.data; // Handle both response formats
+    return response.data.liveClass || response.data;
   } catch (error) {
     console.error("CREATE_LIVE_CLASS_API ERROR:", error);
     const errorMessage = error.response?.data?.message || 
