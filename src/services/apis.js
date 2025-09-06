@@ -1,6 +1,9 @@
-// Base URL is handled by apiconnector.js
-// This ensures all API calls go through the same base URL configuration
-let BASE_URL = '';
+let BASE_URL = process.env.REACT_APP_BASE_URL || 'http://localhost:4000';
+
+// Remove trailing slash from base URL to prevent URL duplication
+if (BASE_URL.endsWith('/')) {
+  BASE_URL = BASE_URL.slice(0, -1);
+}
 
 // AUTH ENDPOINTS
 export const endpoints = {

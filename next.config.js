@@ -46,10 +46,18 @@ const nextConfig = {
   },
   
   // Enable static exports for static site generation
-  output: 'standalone',
+  output: 'export',
   
   // Enable static HTML export
   trailingSlash: true,
+  
+  // Base path for static assets
+  assetPrefix: process.env.NODE_ENV === 'production' ? '' : '',
+  
+  // Disable image optimization since we're using static export
+  images: {
+    unoptimized: true,
+  },
   
   // Disable TypeScript type checking during build (handled by Vercel)
   typescript: {

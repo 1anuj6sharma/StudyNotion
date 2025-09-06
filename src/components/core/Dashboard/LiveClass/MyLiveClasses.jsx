@@ -15,16 +15,18 @@ const MyLiveClasses = () => {
   const [loading, setLoading] = useState(true);
   const [joiningClass, setJoiningClass] = useState(null);
 
+  const [error, setError] = useState(null);
+
   const fetchUpcomingClasses = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const result = await getUpcomingClasses(token);
-      if (result) {
-        setUpcomingClasses(result);
-      }
+      setUpcomingClasses(Array.isArray(result) ? result : []);
     } catch (error) {
       console.error('Error fetching upcoming classes:', error);
-      toast.error('Failed to fetch upcoming classes');
+      setError(error.message || 'Failed to fetch upcoming classes');
+      setUpcomingClasses([]);
     } finally {
       setLoading(false);
     }
@@ -95,8 +97,53 @@ const MyLiveClasses = () => {
   if (loading) {
     return (
       <div className="bg-richblack-900 text-white min-h-screen p-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="spinner"></div>
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-3xl font-bold text-richblack-5 mb-8">My Live Classes</h1>
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="bg-richblack-900 text-white min-h-screen p-6">
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-3xl font-bold text-richblack-5 mb-8">My Live Classes</h1>
+          <div className="bg-richblack-800 p-6 rounded-lg border border-richblack-700">
+            <div className="text-center py-12">
+              <div className="text-yellow-400 text-5xl mb-4">⚠️</div>
+              <h2 className="text-xl font-semibold text-richblack-100 mb-2">Error Loading Classes</h2>
+              <p className="text-richblack-300 mb-6">{error}</p>
+              <button
+                onClick={fetchUpcomingClasses}
+                className="px-6 py-2 bg-yellow-50 text-richblack-900 font-medium rounded-lg hover:bg-yellow-100 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle empty state
+  if (!loading && upcomingClasses.length === 0) {
+    return (
+      <div className="bg-richblack-900 text-white min-h-screen p-6">
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-3xl font-bold text-richblack-5 mb-8">My Live Classes</h1>
+          <div className="bg-richblack-800 p-6 rounded-lg border border-richblack-700">
+            <div className="text-center py-12">
+              <div className="text-blue-400 text-5xl mb-4">📅</div>
+              <h2 className="text-xl font-semibold text-richblack-100 mb-2">No Upcoming Classes</h2>
+              <p className="text-richblack-300">You don't have any upcoming live classes scheduled.</p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -104,7 +151,7 @@ const MyLiveClasses = () => {
 
   return (
     <div className="bg-richblack-900 text-white min-h-screen p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-richblack-5 mb-2">
             My Live Classes

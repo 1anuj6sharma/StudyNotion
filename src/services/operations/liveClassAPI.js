@@ -20,90 +20,67 @@ const {
 export async function createLiveClass(data, token) {
   const toastId = toast.loading("Creating Live Class...");
   try {
-    console.log('Creating live class with data:', data);
-    
-    // Ensure we have a valid token
-    if (!token) {
-      throw new Error("Authentication token is missing");
-    }
-
-    // Prepare the request
-    const requestData = {
-      ...data,
-      scheduledTime: data.scheduledTime || new Date().toISOString(),
-      scheduledAt: data.scheduledAt || new Date().toISOString(),
-    };
-
-    console.log('Sending request to:', CREATE_LIVE_CLASS_API);
-    const response = await apiConnector(
-      "POST", 
-      CREATE_LIVE_CLASS_API, 
-      requestData,
-      {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    );
-
-    console.log('API Response:', response);
-
-    if (!response) {
-      throw new Error("No response received from server");
-    }
-
-    // Handle different response statuses
-    if (response.status === 401) {
-      throw new Error("Authentication failed. Please log in again.");
-    }
-
-    if (response.status === 400) {
-      const errorMsg = response.data?.message || "Invalid request data";
-      throw new Error(errorMsg);
-    }
-
-    if (response.status === 500) {
-      throw new Error("Server error. Please try again later.");
-    }
-
-    if (!response.data || !response.data.success) {
-      const errorMsg = response.data?.message || "Failed to create live class";
-      throw new Error(errorMsg);
-    }
-
-    toast.success("Live Class Created Successfully!");
-    return response.data.liveClass || response.data;
-  } catch (error) {
-    console.error("CREATE_LIVE_CLASS_API ERROR:", error);
-    const errorMessage = error.response?.data?.message || 
-                        error.message || 
-                        "An error occurred while creating the live class";
-    
-    toast.error(errorMessage);
-    throw error;
-  } finally {
-    toast.dismiss(toastId);
-  }
-}
-
-// Get all upcoming live classes
-export async function getUpcomingClasses(token) {
-  const toastId = toast.loading("Loading...");
-  try {
-    const response = await apiConnector("GET", GET_UPCOMING_CLASSES_API, null, {
+    // Use the real create endpoint with authentication
+    const response = await apiConnector("POST", CREATE_LIVE_CLASS_API, data, {
       Authorization: `Bearer ${token}`,
     });
 
-    console.log("GET_UPCOMING_CLASSES_API RESPONSE............", response);
+    console.log("CREATE_LIVE_CLASS_API RESPONSE............", response);
 
     if (!response?.data?.success) {
-      throw new Error("Could Not Fetch Upcoming Classes");
+      throw new Error("Could Not Create Live Class");
     }
 
+    toast.success("Live Class Created Successfully");
     toast.dismiss(toastId);
-    return response.data.classes;
+    return response.data.liveClass;
   } catch (error) {
-    console.log("GET_UPCOMING_CLASSES_API ERROR............", error);
-    toast.error(error.response?.data?.message || "Could Not Fetch Classes");
+    console.log("CREATE_LIVE_CLASS_API ERROR............", error);
+    toast.error(error.response?.data?.message || "Could Not Create Live Class");
+    toast.dismiss(toastId);
+    throw error;
+  }
+}
+
+// Get all upcoming live classes for students
+export async function getUpcomingClasses(token) {
+  const toastId = toast.loading("Loading upcoming classes...");
+  try {
+    console.log('Fetching upcoming classes with token:', token ? 'Token exists' : 'No token');
+    
+    const response = await apiConnector("GET", GET_UPCOMING_CLASSES_API, null, {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
+
+    console.log("GET_UPCOMING_CLASSES_API RESPONSE:", response);
+
+    if (!response || !response.data) {
+      throw new Error('No response data received');
+    }
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || "Could not fetch upcoming classes");
+    }
+
+    // Ensure we have classes array even if empty
+    const classes = Array.isArray(response.data.classes) ? response.data.classes : [];
+    
+    console.log(`Fetched ${classes.length} upcoming classes`);
+    toast.dismiss(toastId);
+    return classes;
+  } catch (error) {
+    console.error("GET_UPCOMING_CLASSES_API ERROR:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    
+    // Only show error toast if it's not a 401 (handled by interceptor)
+    if (error.response?.status !== 401) {
+      toast.error(error.response?.data?.message || "Failed to load upcoming classes");
+    }
+    
     toast.dismiss(toastId);
     throw error;
   }
