@@ -8,7 +8,13 @@
     }
   ],
   "routes": [
-    { "handle": "filesystem" },
-    { "src": "/.*", "dest": "/index.html" }
+    {
+      "src": "/api/(.*)",
+      "dest": "https://studynotion-backend-g7ip.onrender.com/api/v1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
   ]
 }
