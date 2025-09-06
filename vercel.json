@@ -11,7 +11,7 @@
     { "handle": "filesystem" },
     {
       "src": "/api/(.*)",
-      "dest": "https://studynotion-backend-g7ip.onrender.com/api/v1"
+      "dest": "https://studynotion-backend-g7ip.onrender.com/api/v1/$1"
     },
     {
       "src": "/.*",
