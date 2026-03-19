@@ -57,7 +57,8 @@ export default function CourseInformationForm() {
       setValue("courseBenefits", course.whatYouWillLearn || "")
       setValue("courseCategory", course.category || "")
       setValue("courseRequirements", course.instructions || [])
-      setValue("courseImage", course.thumbnail || "")
+      // Don't set courseImage to URL string - leave it null unless user uploads new file
+      // The preview will be handled by editData prop in Upload component
     }
     
     getCategories()
@@ -83,7 +84,8 @@ export default function CourseInformationForm() {
     if (currentValues.courseBenefits !== (course.whatYouWillLearn || '')) return true;
     if ((currentValues.courseCategory?._id || '') !== (course.category?._id || '')) return true;
     if (!arraysEqual(currentValues.courseRequirements || [], course.instructions || [])) return true;
-    if (currentValues.courseImage !== (course.thumbnail || '')) return true;
+    // Check if a new file was uploaded (File object means user selected new image)
+    if (currentValues.courseImage instanceof File) return true;
     
     return false
   }
@@ -127,7 +129,8 @@ export default function CourseInformationForm() {
         if (JSON.stringify(currentValues.courseRequirements) !== JSON.stringify(course.instructions || [])) {
           formData.append("instructions", JSON.stringify(data.courseRequirements));
         }
-        if (currentValues.courseImage !== course.thumbnail) {
+        // Only append if user uploaded a new file (File object)
+        if (data.courseImage instanceof File) {
           formData.append("thumbnailImage", data.courseImage);
         }
         
@@ -139,6 +142,11 @@ export default function CourseInformationForm() {
         }
       } else {
         // For new course creation
+        // Debug logging
+        console.log("🔍 courseImage value:", data.courseImage)
+        console.log("🔍 Is File?", data.courseImage instanceof File)
+        console.log("🔍 Type:", typeof data.courseImage)
+
         formData.append("courseName", data.courseTitle);
         formData.append("courseDescription", data.courseShortDesc);
         formData.append("price", data.coursePrice);
@@ -147,10 +155,16 @@ export default function CourseInformationForm() {
         formData.append("category", typeof data.courseCategory === 'object' ? data.courseCategory._id : data.courseCategory);
         formData.append("status", COURSE_STATUS.DRAFT);
         formData.append("instructions", JSON.stringify(data.courseRequirements));
-        
-        // Handle file upload
-        if (data.courseImage) {
+
+        // Only append if it's a real File object
+        if (data.courseImage instanceof File) {
           formData.append("thumbnailImage", data.courseImage);
+          console.log("✅ Thumbnail image appended to FormData")
+        } else {
+          console.error("❌ No valid image file to upload!")
+          toast.error("Please upload a course thumbnail image")
+          setLoading(false)
+          return
         }
         
         const result = await addCourseDetails(formData, token);

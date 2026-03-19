@@ -40,9 +40,10 @@ export default function SubSectionModal({
     if (view || edit) {
       setValue("lectureTitle", modalData.title || "")
       setValue("lectureDesc", modalData.description || "")
-      setValue("lectureVideo", modalData.videoUrl || "", { shouldValidate: true })
+      // Don't set lectureVideo to URL string - leave it null unless user uploads new file
+      // The preview will be handled by viewData/editData props in Upload component
     }
-  }, [view, edit, modalData.title, modalData.description, modalData.videoUrl, setValue])
+  }, [view, edit, modalData.title, modalData.description, setValue])
 
   // detect whether form is updated or not
   const isFormUpdated = () => {
@@ -51,7 +52,7 @@ export default function SubSectionModal({
     if (
       currentValues.lectureTitle !== modalData.title ||
       currentValues.lectureDesc !== modalData.description ||
-      currentValues.lectureVideo !== modalData.videoUrl
+      currentValues.lectureVideo instanceof File  // Check if new file uploaded
     ) {
       return true
     }
@@ -64,37 +65,20 @@ export default function SubSectionModal({
     const formData = new FormData()
     formData.append("sectionId", modalData.sectionId)
     formData.append("subSectionId", modalData._id)
-    
+
     if (currentValues.lectureTitle !== modalData.title) {
       formData.append("title", currentValues.lectureTitle)
     }
-    
+
     if (currentValues.lectureDesc !== modalData.description) {
       formData.append("description", currentValues.lectureDesc)
     }
-    
-    // Handle file upload if video was changed
-    if (currentValues.lectureVideo !== modalData.videoUrl) {
-      if (currentValues.lectureVideo instanceof File) {
-        formData.append("video", currentValues.lectureVideo)
-      } else if (typeof currentValues.lectureVideo === 'object' && currentValues.lectureVideo !== null) {
-        if (currentValues.lectureVideo.file) {
-          formData.append("video", currentValues.lectureVideo.file)
-        } else if (currentValues.lectureVideo.path) {
-          try {
-            const response = await fetch(currentValues.lectureVideo.path)
-            const blob = await response.blob()
-            const file = new File([blob], currentValues.lectureVideo.path.split('/').pop(), { type: blob.type })
-            formData.append("video", file)
-          } catch (error) {
-            console.error("Error processing video file:", error)
-            toast.error("Failed to process video file")
-            return
-          }
-        }
-      }
+
+    // Only append if user uploaded a new video file (File object)
+    if (currentValues.lectureVideo instanceof File) {
+      formData.append("video", currentValues.lectureVideo)
     }
-    
+
     setLoading(true)
     try {
       const result = await updateSubSection(formData, token)
@@ -127,25 +111,31 @@ export default function SubSectionModal({
       return
     }
 
+    // Debug logging
+    console.log("🔍 lectureVideo value:", data.lectureVideo)
+    console.log("🔍 Is File?", data.lectureVideo instanceof File)
+    console.log("🔍 Type:", typeof data.lectureVideo)
+
     const formData = new FormData()
     formData.append("sectionId", modalData)
     formData.append("title", data.lectureTitle)
     formData.append("description", data.lectureDesc)
-    
-    // Handle file upload separately if it's a File object
+
+    // Only append if it's a real File object
     if (data.lectureVideo instanceof File) {
       formData.append("video", data.lectureVideo)
-    } else if (typeof data.lectureVideo === 'object' && data.lectureVideo !== null) {
-      // If it's an object with file data, try to get the actual file
-      if (data.lectureVideo.file) {
-        formData.append("video", data.lectureVideo.file)
-      } else if (data.lectureVideo.path) {
-        // Handle case where we have a file path instead of File object
-        const response = await fetch(data.lectureVideo.path)
-        const blob = await response.blob()
-        const file = new File([blob], data.lectureVideo.path.split('/').pop(), { type: blob.type })
-        formData.append("video", file)
+      console.log("✅ Video file appended to FormData")
+
+      // Debug: Log all FormData entries
+      console.log("📋 FormData contents:")
+      for (let pair of formData.entries()) {
+        console.log(`  ${pair[0]}:`, pair[1])
       }
+    } else {
+      console.error("❌ No valid video file to upload!")
+      toast.error("Please upload a video file")
+      setLoading(false)
+      return
     }
 
     setLoading(true)

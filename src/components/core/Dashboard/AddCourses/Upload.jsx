@@ -34,16 +34,16 @@ export default function Upload({
     if (rejectedFiles && rejectedFiles.length > 0) {
       const error = rejectedFiles[0].errors[0];
       let message = 'File upload error: ';
-      
+
       if (error.code === 'file-too-large') {
         message += 'File is too large. Maximum size is 50MB.';
       } else if (error.code === 'file-invalid-type') {
-        message += 'Invalid file type. Please upload ' + 
+        message += 'Invalid file type. Please upload ' +
           (video ? 'a video file (.mp4)' : 'an image file (.jpg, .jpeg, .png)');
       } else {
         message += error.message;
       }
-      
+
       toast.error(message);
       return;
     }
@@ -55,21 +55,15 @@ export default function Upload({
         toast.error('File is too large. Maximum size is 50MB.');
         return;
       }
-      
-      // Create a preview URL for the file
-      const fileUrl = URL.createObjectURL(file);
-      
-      // Store both the file object and its URL
-      const fileData = {
-        file: file,
-        preview: fileUrl,
-        name: file.name,
-        type: file.type
-      };
-      
+
+      console.log(`📤 File selected for ${name}:`, file);
+      console.log(`📤 File instanceof File:`, file instanceof File);
+
       previewFile(file);
-      // Pass the file object to the form
-      setValue(name, fileData, { shouldValidate: true });
+      // Pass the actual File object to the form (not wrapped in an object)
+      setValue(name, file, { shouldValidate: true });
+
+      console.log(`✅ setValue called for ${name} with File object`);
     }
   }, [name, setValue, video, previewFile]);
 
@@ -84,16 +78,29 @@ export default function Upload({
   
 
   useEffect(() => {
-    register(name, { 
-      required: 'This field is required',
+    register(name, {
+      required: !viewData && !editData ? 'This field is required' : false,
       validate: (value) => {
-        if (!value && !previewSource) {
+        // In view mode, no validation needed
+        if (viewData) return true;
+
+        // In edit mode, file is optional (user might not want to change it)
+        if (editData) return true;
+
+        // In add mode, file is required
+        if (!value) {
           return 'Please upload a file';
         }
+
+        // Ensure it's a File object
+        if (!(value instanceof File)) {
+          return 'Invalid file format';
+        }
+
         return true;
       }
     });
-  }, [register, name, previewSource])
+  }, [register, name, viewData, editData])
 
   useEffect(() => {
     if (editData) {
@@ -104,11 +111,8 @@ export default function Upload({
   const removeFile = useCallback((e) => {
     e?.stopPropagation();
     setPreviewSource("");
-    if (previewSource) {
-      URL.revokeObjectURL(previewSource); // Clean up the object URL
-    }
     setValue(name, null, { shouldValidate: true });
-  }, [name, setValue, previewSource]);
+  }, [name, setValue]);
 
   return (
     <div className="flex flex-col space-y-2">

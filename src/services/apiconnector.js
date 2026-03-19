@@ -18,7 +18,7 @@ export const axiosInstance = axios.create({
   baseURL: getBaseUrl(),
   timeout: 60000, // 60 seconds timeout
   headers: {
-    "Content-Type": "application/json",
+    // Don't set Content-Type here - let interceptor handle it
     "Accept": "application/json",
   },
   withCredentials: true,
@@ -36,18 +36,23 @@ axiosInstance.interceptors.request.use(
       params: config.params,
       headers: config.headers
     });
-    
+
     // Add auth token if exists
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
-    // Ensure we always have a content type
-    if (!config.headers['Content-Type']) {
+
+    // IMPORTANT: If data is FormData, let the browser set Content-Type automatically
+    // The browser will set it to multipart/form-data with the correct boundary
+    if (config.data instanceof FormData) {
+      // Remove Content-Type to let browser set it with boundary
+      delete config.headers['Content-Type'];
+    } else if (!config.headers['Content-Type']) {
+      // Only set JSON content type for non-FormData requests
       config.headers['Content-Type'] = 'application/json';
     }
-    
+
     return config;
   },
   (error) => {

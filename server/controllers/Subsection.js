@@ -16,8 +16,20 @@ exports.createSubSection = async (req, res) => {
         message: "Video file is required"
       });
     }
-    
+
     const video = req.files.video;
+
+    // Debug: Log what we received
+    console.log('Video object type:', typeof video);
+    console.log('Video is array?', Array.isArray(video));
+    console.log('Video keys:', Object.keys(video));
+    console.log('Video properties:', {
+      name: video.name,
+      size: video.size,
+      mimetype: video.mimetype,
+      tempFilePath: video.tempFilePath,
+      data: video.data ? `Buffer(${video.data.length} bytes)` : undefined
+    });
 
     // Validate required fields
     if (!sectionId || !title || !description) {
@@ -40,7 +52,7 @@ exports.createSubSection = async (req, res) => {
     let uploadDetails;
     try {
       uploadDetails = await uploadImageToCloudinary(
-        video.tempFilePath || video, // Handle both temp file and direct upload
+        video, // Pass the entire video object, not just tempFilePath
         process.env.FOLDER_NAME || 'study-notion/videos'
       );
       console.log('Cloudinary upload successful:', uploadDetails);

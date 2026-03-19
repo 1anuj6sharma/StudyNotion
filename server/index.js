@@ -101,6 +101,14 @@ app.use((req, res, next) => {
   
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     console.log('Body:', JSON.stringify(req.body, null, 2));
+    if (req.files) {
+      console.log('Files:', Object.keys(req.files));
+      Object.keys(req.files).forEach(key => {
+        console.log(`  ${key}:`, req.files[key].name, `(${req.files[key].size} bytes)`);
+      });
+    } else {
+      console.log('Files: None');
+    }
   }
   
   // Log response headers before they're sent

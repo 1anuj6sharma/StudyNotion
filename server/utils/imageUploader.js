@@ -17,7 +17,11 @@ exports.uploadImageToCloudinary = async (file, folder, height, quality) => {
       throw new Error('No file provided')
     }
 
-    const options = { 
+    // express-fileupload uses 'name' and 'size', not 'originalname'
+    const fileName = file.name || file.originalname || 'unknown'
+    const fileSize = file.size || 0
+
+    const options = {
       folder,
       resource_type: 'auto',
       use_filename: true,
@@ -29,8 +33,14 @@ exports.uploadImageToCloudinary = async (file, folder, height, quality) => {
     if (height) options.height = height
     if (quality) options.quality = quality
 
-    console.log(`Uploading file to Cloudinary: ${file.originalname} (${file.size} bytes)`)
-    
+    console.log(`Uploading file to Cloudinary: ${fileName} (${fileSize} bytes)`)
+    console.log('File object properties:', Object.keys(file))
+    console.log('tempFilePath:', file.tempFilePath)
+
+    if (!file.tempFilePath) {
+      throw new Error('Missing required parameter - file (no tempFilePath found)')
+    }
+
     // Upload the file
     const result = await cloudinary.uploader.upload(file.tempFilePath, options)
     

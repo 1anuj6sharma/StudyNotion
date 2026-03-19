@@ -87,7 +87,7 @@ export const addCourseDetails = async (data, token) => {
   const toastId = toast.loading("Loading...")
   try {
     const response = await apiConnector("POST", CREATE_COURSE_API, data, {
-      "Content-Type": "multipart/form-data",
+      // Don't set Content-Type - let browser set it automatically for FormData
       Authorization: `Bearer ${token}`,
     })
     console.log("CREATE COURSE API RESPONSE............", response)
@@ -110,7 +110,7 @@ export const editCourseDetails = async (data, token) => {
   const toastId = toast.loading("Loading...")
   try {
     const response = await apiConnector("POST", EDIT_COURSE_API, data, {
-      "Content-Type": "multipart/form-data",
+      // Don't set Content-Type - let browser set it automatically for FormData
       Authorization: `Bearer ${token}`,
     })
     console.log("EDIT COURSE API RESPONSE............", response)
@@ -154,11 +154,17 @@ export const createSubSection = async (data, token) => {
   let result = null
   const toastId = toast.loading("Adding Lecture...")
   try {
+    // Debug: Log FormData contents before sending
+    console.log("🚀 Sending FormData to API:")
+    for (let pair of data.entries()) {
+      console.log(`  ${pair[0]}:`, pair[1])
+    }
+
     const response = await apiConnector("POST", CREATE_SUBSECTION_API, data, {
-      "Content-Type": "multipart/form-data",
+      // Don't set Content-Type - let browser set it automatically for FormData
       Authorization: `Bearer ${token}`,
     })
-    
+
     console.log("CREATE SUB-SECTION API RESPONSE............", response)
     
     if (!response?.data?.success) {
@@ -207,7 +213,7 @@ export const updateSubSection = async (data, token) => {
   const toastId = toast.loading("Updating Lecture...")
   try {
     const response = await apiConnector("POST", UPDATE_SUBSECTION_API, data, {
-      "Content-Type": "multipart/form-data",
+      // Don't set Content-Type - let browser set it automatically for FormData
       Authorization: `Bearer ${token}`,
     })
     
