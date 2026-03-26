@@ -15,6 +15,60 @@ const VideoDetailsSidebar = ({ setReviewModal }) => {
   const { courseSectionData, courseEntireData, completedLectures, totalNoOfLectures } = useSelector(state => state.viewCourse);
   const navigate = useNavigate();
   const [showSidebar, setShowSidebar] = useState(false);
+
+  // Debug logging
+  console.log("🔍 Debug - Course Data:", {
+    courseSectionData,
+    completedLectures,
+    currentVideoId: subsectionId
+  });
+
+  const isVideoUnlocked = (sectionIndex, subSectionIndex) => {
+    // First video is always unlocked
+    if (sectionIndex === 0 && subSectionIndex === 0) {
+      console.log("🔓 First video - always unlocked")
+      return true
+    }
+
+    // Check if previous video in same section is completed
+    if (subSectionIndex > 0) {
+      const prevVideoId = courseSectionData[sectionIndex].subSection[subSectionIndex - 1]._id
+      const isPrevCompleted = completedLectures.includes(prevVideoId)
+      console.log("🔓 Checking previous video in same section:", {
+        prevVideoId,
+        isPrevCompleted,
+        completedLectures
+      })
+      return isPrevCompleted
+    }
+
+    // Check if last video of previous section is completed
+    if (subSectionIndex === 0 && sectionIndex > 0) {
+      const prevSection = courseSectionData[sectionIndex - 1]
+      const lastVideoOfPrevSection = prevSection.subSection[prevSection.subSection.length - 1]._id
+      const isLastOfPrevCompleted = completedLectures.includes(lastVideoOfPrevSection)
+      console.log("🔓 Checking last video of previous section:", {
+        lastVideoOfPrevSection,
+        isLastOfPrevCompleted,
+        completedLectures
+      })
+      return isLastOfPrevCompleted
+    }
+
+    return false
+  };
+
+  const handleVideoClick = (section, subSection, sectionIndex, subSectionIndex) => {
+    if (!isVideoUnlocked(sectionIndex, subSectionIndex)) {
+      // Don't navigate to locked videos
+      return
+    }
+
+    if (window.innerWidth < 1024) {
+      setShowSidebar(true);
+    }
+    navigate(`/view-course/${courseId}/section/${section._id}/sub-section/${subSection._id}`);
+  };
   useEffect(() => {
     ; (() => {
       if (!courseSectionData) return;
@@ -55,8 +109,8 @@ const VideoDetailsSidebar = ({ setReviewModal }) => {
           </div>
           <div className='h-[calc(100vh - 5rem)] overflow-y-auto px-2'>
             {
-              courseSectionData?.map((section, index) => (
-                <details key={index} className=' appearance-none text-richblack-5 detailanimatation'>
+              courseSectionData?.map((section, sectionIndex) => (
+                <details key={sectionIndex} className=' appearance-none text-richblack-5 detailanimatation'>
                   <summary className='mt-2 cursor-pointer text-sm text-richblack-5 appearance-none'>
                     <div className='flex flex-row justify-between bg-richblack-600 px-5 py-4'>
                       <p className='w-[70%] font-semibold'>{section?.sectionName}</p>
@@ -66,25 +120,44 @@ const VideoDetailsSidebar = ({ setReviewModal }) => {
                     </div>
                   </summary>
                   {
-                    section?.subSection.map((subSection, index) => (
-                      <div key={subSection?._id} className='transition-[height] duration-500 ease-in-out'>
-                        <div onClick={() => {
-                          if (window.innerWidth < 1024) {
-                            setShowSidebar(true);
-                          }
-                          navigate(`/view-course/${courseId}/section/${section?._id}/sub-section/${subSection?._id}`);
-                        }} className={`${subSection?._id === videoActive ? ("bg-yellow-200") : ("bg-richblack-50")} cursor-pointer items-baseline  flex gap-3  px-5 py-2 font-semibold text-richblack-800 relative border-b-[1px] border-richblack-600 `}>
-                          <div className="checkbox-wrapper-19 absolute bottom-1">
-                            <input readOnly={true} checked={
-                              completedLectures?.includes(subSection?._id)
-                            } type="checkbox" />
-                            <label className="check-box">
-                            </label>
+                    section?.subSection.map((subSection, subSectionIndex) => {
+                      const isUnlocked = isVideoUnlocked(sectionIndex, subSectionIndex);
+                      const isCompleted = completedLectures?.includes(subSection?._id);
+                      
+                      return (
+                        <div key={subSection?._id} className='transition-[height] duration-500 ease-in-out'>
+                          <div 
+                            onClick={() => handleVideoClick(section, subSection, sectionIndex, subSectionIndex)}
+                            className={`${subSection?._id === videoActive ? ("bg-yellow-200") : (isUnlocked ? "bg-richblack-50" : "bg-richblack-700 opacity-60")} ${isUnlocked ? "cursor-pointer" : "cursor-not-allowed"} items-baseline flex gap-3 px-5 py-2 font-semibold text-richblack-800 relative border-b-[1px] border-richblack-600`}
+                          >
+                            <div className="checkbox-wrapper-19 absolute bottom-1">
+                              <input readOnly={true} checked={isCompleted} type="checkbox" />
+                              <label className="check-box"></label>
+                            </div>
+                            
+                            {/* Lock/Unlock indicator */}
+                            <div className="ml-6 flex items-center gap-2">
+                              {!isUnlocked && (
+                                <div className="text-xs text-red-500 font-semibold">
+                                  🔒 LOCKED
+                                </div>
+                              )}
+                              {isUnlocked && !isCompleted && (
+                                <div className="text-xs text-green-500 font-semibold">
+                                  📺 AVAILABLE
+                                </div>
+                              )}
+                              {isCompleted && (
+                                <div className="text-xs text-blue-500 font-semibold">
+                                  ✅ COMPLETED
+                                </div>
+                              )}
+                              <p className={`${!isUnlocked ? "text-gray-400" : ""}`}>{subSection?.title}</p>
+                            </div>
                           </div>
-                          <p className=' ml-6'>{subSection?.title}</p>
                         </div>
-                      </div>
-                    ))
+                      )
+                    })
                   }
                 </details>
               ))

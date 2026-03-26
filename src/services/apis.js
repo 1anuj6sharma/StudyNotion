@@ -55,10 +55,6 @@ export const ratingsEndpoints = {
   REVIEWS_DETAILS_API: BASE_URL + "/course/getReviews",
 }
 
-// AI CHATBOT ENDPOINTS
-export const aiChatbotEndpoints = {
-  GET_AI_RECOMMENDATIONS: BASE_URL + '/ai-chatbot/recommendations',
-}
 
 // CATAGORIES API
 export const categories = {

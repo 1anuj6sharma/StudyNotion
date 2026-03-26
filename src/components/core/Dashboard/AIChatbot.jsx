@@ -1,345 +1,204 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSelector } from 'react-redux';
-import { toast } from 'react-hot-toast';
-import { FaRobot, FaPaperPlane, FaLightbulb, FaBook, FaStar } from 'react-icons/fa';
-import axios from 'axios';
-import CourseRecommendation from './CourseRecommendation';
-import CourseSuggestion from './CourseSuggestion';
-import { aiChatbotEndpoints } from '../../../services/apis';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MessageCircle, X, Send, RotateCw } from 'lucide-react';
 
-const AIChatbot = () => {
-  const { user } = useSelector((state) => state.profile);
-  
-  // Log user object to debug account type
-  useEffect(() => {
-    console.log('Current user object:', user);
-    if (user) {
-      console.log('User account type:', user.accountType || 'not found');
-      console.log('All user properties:', Object.keys(user));
-    }
-  }, [user]);
+const ChatBot = () => {
+  const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: user?.accountType === 'instructor' 
-        ? 'Hello! I\'m your Course Creation Assistant. How can I help you today?'
-        : 'Hi there! I\'m your Study Assistant. What would you like to learn about?'
-    }
+    { role: 'model', text: 'Hello! I\'m your StudyNotion AI assistant. How can I help you today?' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [suggestedQuestions, setSuggestedQuestions] = useState([]);
-  const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
-  // Suggested questions based on user role
   useEffect(() => {
-    if (user?.accountType === 'instructor') {
-      setSuggestedQuestions([
-        'What are the latest trends in course creation?',
-        'How can I improve my course engagement?',
-        'What topics should I create my next course on?',
-        'How can I market my courses better?'
-      ]);
-    } else {
-      setSuggestedQuestions([
-        'What courses would you recommend for me?',
-        'What are the most popular courses right now?',
-        'How can I improve my learning?',
-        'What skills are in high demand?'
-      ]);
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [user]);
-
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const testConnection = async () => {
-    try {
-      const response = await axios.get(aiChatbotEndpoints.GET_AI_RECOMMENDATIONS.replace('/recommendations', '/test'));
-      if (response.data.success) {
-        toast.success('OpenAI connection successful!');
-      } else {
-        toast.error('OpenAI connection failed: ' + response.data.error);
-      }
-    } catch (error) {
-      console.error('Connection Test Error:', error);
-      toast.error('Failed to test OpenAI connection');
-    }
-  };
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
 
-  const sendMessage = async () => {
-    const message = input.trim();
-    if (!message || isLoading) return;
+    const userMessage = { role: 'user', text: input };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
 
     try {
-      setIsLoading(true);
-      
-      // Add user message to chat history
-      const userMessage = { role: 'user', content: message };
-      setMessages(prev => [...prev, userMessage]);
-      setInput('');
-
-      // Debug user object and determine role
-      console.log('User object in sendMessage:', user);
-      
-      // Get account type from user object (check multiple possible field names)
-      const accountType = user?.accountType || user?.role || 'student';
-      const userRole = typeof accountType === 'string' 
-        ? accountType.toLowerCase().includes('instructor') || accountType.toLowerCase().includes('teacher')
-          ? 'instructor' 
-          : 'student'
-        : 'student';
-      
-      console.log('Determined user role:', userRole);
-      
-      // Prepare request data
-      const requestData = {
-        role: userRole,
-        query: message
-      };
-      
-      console.log('Sending request with role:', userRole, 'and query:', message);
-
-      // Log the request
-      console.log('Sending AI Chatbot request:', {
-        url: aiChatbotEndpoints.GET_AI_RECOMMENDATIONS,
-        data: requestData,
-        hasToken: !!localStorage.getItem('token')
-      });
-
-      // Make the API call with increased timeout and better error handling
-      const source = axios.CancelToken.source();
-      const timeout = setTimeout(() => {
-        source.cancel('Request timed out after 30 seconds');
-      }, 30000);
-
-      const response = await axios({
-        method: 'post',
-        url: aiChatbotEndpoints.GET_AI_RECOMMENDATIONS,
-        data: requestData,
+      // Direct Gemini API call
+      const api_key = process.env.REACT_APP_GOOGLE_API_KEY;
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${api_key}`, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
         },
-        cancelToken: source.token,
-        timeout: 30000, // Increased timeout to 30 seconds
-        withCredentials: true,
-        validateStatus: (status) => status < 500 // Only reject on 5xx errors
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `You are a helpful AI assistant for StudyNotion, an online learning platform. You help students with course recommendations, learning advice, and general educational guidance.
+
+User message: "${input}"
+
+Please provide a helpful response that:
+1. Is friendly and conversational
+2. Focuses on education, courses, and learning
+3. Provides practical advice when possible
+4. Encourages learning and skill development
+5. Mentions relevant course categories like programming, design, business, data science, etc.
+
+Keep your response concise but informative (2-3 sentences max).`
+            }]
+          }]
+        })
       });
 
-      clearTimeout(timeout);
-
-      // Log the response
-      console.log('AI Chatbot response:', {
-        status: response.status,
-        data: response.data
-      });
-
-      // Handle the response
-      if (response.data?.success) {
-        const aiResponse = {
-          role: 'assistant',
-          content: response.data.response || 'I received your message but had trouble processing it. Could you try rephrasing?',
-          recommendations: response.data.recommendations || [],
-          suggestedTopics: response.data.suggestedTopics || []
-        };
-        setMessages(prev => [...prev, aiResponse]);
-      } else {
-        // Handle API error responses (non-2xx status codes)
-        const errorMessage = response.data?.message || 'Failed to get a response from the AI service';
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: `Error: ${errorMessage}`,
-          isError: true
-        }]);
-        toast.error(errorMessage);
-      }
+      const data = await response.json();
+      const botMessage = { role: 'model', text: data.candidates[0]?.content?.parts[0]?.text || 'Sorry, I encountered an error. Please try again.' };
+      setMessages(prev => [...prev, botMessage]);
+      
     } catch (error) {
-      console.error('Chatbot Error:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        code: error.code,
-        isAxiosError: axios.isAxiosError(error)
-      });
-      
-      // Prepare error message
-      let errorMessage = 'Sorry, I encountered an error. Please try again later.';
-      
-      if (axios.isCancel(error)) {
-        errorMessage = 'Request took too long. The server might be busy. Please try again in a moment.';
-      } else if (error.response) {
-        // Server responded with an error status code (4xx, 5xx)
-        errorMessage = error.response.data?.message || 
-                      `Server error: ${error.response.status} ${error.response.statusText}`;
-      } else if (error.request) {
-        // Request was made but no response received
-        errorMessage = 'No response from server. Please check your connection and try again.';
-      } else if (error.code === 'ECONNABORTED') {
-        errorMessage = 'Connection timed out. The server took too long to respond.';
-      }
-      
-      // Add error message to chat
+      console.error('Chatbot error:', error);
       setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: `I'm having trouble connecting to the AI service. ${errorMessage}`,
-        isError: true
+        role: 'model',
+        text: 'Connection error. Please check your internet and try again.'
       }]);
-      
-      // Show toast for all errors except 401 (unauthorized)
-      if (error.response?.status !== 401) {
-        toast.error(errorMessage);
-      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      handleSend();
     }
   };
 
-  const handleSuggestedQuestion = (question) => {
-    setInput(question);
+  const clearMessages = () => {
+    setMessages([
+      { role: 'model', text: 'Chat cleared! How can I help you?' }
+    ]);
   };
 
   return (
-    <div className="bg-richblack-900 text-white rounded-lg h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-richblack-700">
-        <div className="flex items-center gap-3">
-          <div className="bg-richblack-800 p-2 rounded-full">
-            <FaRobot className="text-yellow-400 text-xl" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-richblack-5">
-              {user?.accountType === 'instructor' ? 'Course Creation Assistant' : 'Study Assistant'}
-            </h2>
-            <p className="text-xs text-richblack-300">
-              {isLoading ? 'Typing...' : 'Online'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Chat messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex ${
-              message.role === 'assistant' ? 'justify-start' : 'justify-end'
-            }`}
-          >
-            <div
-              className={`rounded-lg p-4 max-w-[85%] ${
-                message.role === 'assistant'
-                  ? 'bg-richblack-800 text-richblack-5'
-                  : 'bg-yellow-400 text-richblack-900'
-              } ${message.isError ? 'border border-red-500' : ''}`}
-            >
-              <div className="prose prose-invert max-w-none">
-                {message.content.split('\n').map((paragraph, i) => (
-                  <p key={i} className="mb-2 last:mb-0">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-
-              {/* Show recommendations if available */}
-              {message.recommendations?.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="font-medium text-sm text-richblack-200 mb-2 flex items-center">
-                    <FaBook className="mr-2" /> Recommended Courses
-                  </h4>
-                  <div className="space-y-2">
-                    {message.recommendations.map((course, i) => (
-                      <CourseRecommendation key={i} course={course} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Show course suggestions for instructors */}
-              {message.suggestedTopics?.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="font-medium text-sm text-richblack-200 mb-2 flex items-center">
-                    <FaStar className="mr-2" /> Course Suggestions
-                  </h4>
-                  <div className="space-y-2">
-                    {message.suggestedTopics.map((topic, i) => (
-                      <CourseSuggestion key={i} topic={topic} />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Suggested questions */}
-      {messages.length <= 1 && (
-        <div className="px-4 pb-4">
-          <h3 className="text-sm text-richblack-300 mb-2">Try asking:</h3>
-          <div className="flex flex-wrap gap-2">
-            {suggestedQuestions.map((question, i) => (
-              <button
-                key={i}
-                onClick={() => handleSuggestedQuestion(question)}
-                className="text-xs bg-richblack-800 hover:bg-richblack-700 text-richblack-200 px-3 py-1.5 rounded-full transition-colors"
-              >
-                {question}
-              </button>
-            ))}
-          </div>
-        </div>
+    <>
+      {/* Chat Icon */}
+      {!open && (
+        <motion.button
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setOpen(true)}
+          className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+        >
+          <MessageCircle size={24} />
+        </motion.button>
       )}
 
-      {/* Input area */}
-      <div className="p-4 border-t border-richblack-700">
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={user?.accountType === 'instructor'
-              ? 'Ask about course creation recommendations...'
-              : 'Ask about course recommendations...'
-            }
-            className="flex-1 bg-richblack-800 text-richblack-100 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-            disabled={isLoading}
-          />
-          <button
-            onClick={testConnection}
-            className="px-4 py-2 bg-richblack-700 text-richblack-200 rounded-lg hover:bg-richblack-600"
-            title="Test OpenAI connection"
+      {/* Chat Window */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-6 right-6 z-50 w-80 sm:w-96 h-[500px] bg-white rounded-xl shadow-2xl overflow-hidden"
           >
-            <FaLightbulb className="w-5 h-5" />
-          </button>
-          <button
-            onClick={sendMessage}
-            disabled={isLoading || !input.trim()}
-            className="px-4 py-2 bg-yellow-400 text-richblack-900 rounded-lg hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <div className="w-5 h-5 border-2 border-richblack-300 border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <FaPaperPlane className="w-5 h-5" />
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <MessageCircle size={20} />
+                <h3 className="font-semibold">StudyNotion AI</h3>
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={clearMessages}
+                  className="hover:bg-white/20 p-1 rounded transition-colors"
+                  title="Clear chat"
+                >
+                  <RotateCw size={16} />
+                </button>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="hover:bg-white/20 p-1 rounded transition-colors"
+                  title="Close chat"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Chat Messages */}
+            <div
+              ref={chatContainerRef}
+              className="flex-1 p-4 space-y-3 overflow-y-auto h-[350px] bg-gray-50"
+            >
+              {messages.map((message, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[80%] p-3 rounded-lg ${
+                      message.role === 'user'
+                        ? 'bg-[#c2410c] text-white'
+                        : 'bg-gray-200 text-gray-800'
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                  </div>
+                </motion.div>
+              ))}
+
+              {isLoading && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-start"
+                >
+                  <div className="bg-gray-200 text-gray-800 p-3 rounded-lg">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* Input Area */}
+            <div className="p-4 border-t bg-white">
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Ask about courses..."
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isLoading}
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim() || isLoading}
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Send size={18} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
-export default AIChatbot;
+export default ChatBot;

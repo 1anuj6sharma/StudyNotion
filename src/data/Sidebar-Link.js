@@ -52,15 +52,7 @@ const sidebarLinks = [
     type: ACCOUNT_TYPE.INSTRUCTOR,
     icon: "VscAdd",
   },
-  // AI Chatbot is accessible to both instructors and students
-  {
-    id: 8,
-    name: "AI Chatbot",
-    path: "/dashboard/ai-chatbot",
-    type: [ACCOUNT_TYPE.INSTRUCTOR, ACCOUNT_TYPE.STUDENT],
-    icon: "AiOutlineRobot",
-  },
-
+  
   // Student Links
   {
     id: 9,

@@ -21,8 +21,8 @@ import CreateLiveClass from "./components/core/Dashboard/LiveClass/CreateLiveCla
 import LiveClasses from "./components/core/Dashboard/LiveClass/LiveClasses"
 import MyLiveClasses from "./components/core/Dashboard/LiveClass/MyLiveClasses"
 import MeetingRoom from "./components/core/Dashboard/LiveClass/MeetingRoom"
-import DashboardAIChatbot from "./components/core/Dashboard/DashboardAIChatbot"
 import VideoDetails from "./components/core/ViewCourse/VideoDetails"
+import AIChatbot from "./components/core/Dashboard/AIChatbot"
 import About from "./pages/About"
 import Catalog from "./pages/Catalog"
 import Contact from "./pages/Contact"
@@ -161,9 +161,7 @@ function App() {
           )}
         </Route>
 
-          {/* AI Chatbot Route */}
-          <Route path="dashboard/ai-chatbot" element={<DashboardAIChatbot />} />
-
+          
         {/* For the watching course lectures */}
         <Route
           element={
@@ -205,7 +203,11 @@ function App() {
         {/* 404 Page */}
         <Route path="*" element={<Error />} />
       </Routes>
-    </div>
+
+    {/* Global AI Chatbot */}
+    <AIChatbot />
+
+  </div>
   )
 }
 

@@ -3,7 +3,6 @@ import MyCourses from '../components/core/Dashboard/MyCourses';
 import LiveClasses from '../components/core/Dashboard/LiveClasses';
 import CreateCourse from '../components/core/Dashboard/CreateCourse';
 import CourseDetails from '../components/core/Dashboard/CourseDetails';
-import DashboardAIChatbot from '../components/core/Dashboard/DashboardAIChatbot';
 
 const dashboardRoutes = [
   {
@@ -26,10 +25,6 @@ const dashboardRoutes = [
     path: '/dashboard/course/:courseId',
     element: <CourseDetails />
   },
-  {
-    path: '/dashboard/ai-chatbot',
-    element: <DashboardAIChatbot />
-  }
-];
+  ];
 
 export default dashboardRoutes;

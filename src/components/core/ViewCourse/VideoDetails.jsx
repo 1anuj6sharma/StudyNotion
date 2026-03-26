@@ -8,8 +8,8 @@ import "video-react/dist/video-react.css"
 import { useLocation } from "react-router-dom"
 import { BigPlayButton, ControlBar, CurrentTimeDisplay, ForwardControl, LoadingSpinner, PlaybackRateMenuButton, Player, ReplayControl, TimeDivider } from "video-react"
 
-import { markLectureAsComplete } from "../../../services/operations/courseDeatailsAPI"
-import { updateCompletedLectures } from "../../../slices/viewCourseSlice"
+import { markLectureAsComplete, getFullDetailsOfCourse } from "../../../services/operations/courseDeatailsAPI"
+import { updateCompletedLectures, setCompletedLectures } from "../../../slices/viewCourseSlice"
 import { BiSkipNextCircle, BiSkipPreviousCircle } from "react-icons/bi"
 import { MdOutlineReplayCircleFilled } from "react-icons/md"
 
@@ -25,7 +25,8 @@ const VideoDetails = () => {
 
   const [videoData, setVideoData] = useState([])
   const [videoEnded, setVideoEnded] = useState(false)
-  const [, setLoading] = useState(false) // Loading state for lecture completion
+  const [loading, setLoading] = useState(false) // Loading state for lecture completion
+  const [isLocked, setIsLocked] = useState(false)
 
   useEffect(() => {
     ; (async () => {
@@ -41,8 +42,59 @@ const VideoDetails = () => {
           (data) => data._id === subSectionId
         )
 
-        setVideoData(filteredVideoData[0])
-        setVideoEnded(false)
+        // Check if video is unlocked
+        const currentSectionIndx = courseSectionData.findIndex(
+          (data) => data._id === sectionId
+        )
+        const currentSubSectionIndx = courseSectionData[
+          currentSectionIndx
+        ].subSection.findIndex((data) => data._id === subSectionId)
+
+        // First video is always unlocked
+        if (currentSectionIndx === 0 && currentSubSectionIndx === 0) {
+          setVideoData(filteredVideoData[0])
+          setVideoEnded(false)
+          setIsLocked(false)
+          return
+        }
+
+        // Check if previous video is completed
+        let isUnlocked = false
+        if (currentSubSectionIndx > 0) {
+          const prevVideoId = courseSectionData[currentSectionIndx].subSection[currentSubSectionIndx - 1]._id
+          isUnlocked = completedLectures.includes(prevVideoId)
+          console.log("🔓 Checking previous video in same section:", {
+            prevVideoId,
+            isUnlocked,
+            completedLectures
+          })
+        } else if (currentSectionIndx > 0) {
+          const prevSection = courseSectionData[currentSectionIndx - 1]
+          const lastVideoOfPrevSection = prevSection.subSection[prevSection.subSection.length - 1]._id
+          isUnlocked = completedLectures.includes(lastVideoOfPrevSection)
+          console.log("🔓 Checking last video of previous section:", {
+            lastVideoOfPrevSection,
+            isUnlocked,
+            completedLectures
+          })
+        }
+
+        console.log("🔓 Final unlock decision:", {
+          currentSectionIndx,
+          currentSubSectionIndx,
+          isUnlocked
+        })
+
+        if (isUnlocked) {
+          setVideoData(filteredVideoData[0])
+          setVideoEnded(false)
+          setIsLocked(false)
+        } else {
+          // Show locked video warning instead of redirect
+          setVideoData(filteredVideoData[0])
+          setVideoEnded(false)
+          setIsLocked(true)
+        }
       }
     })()
   }, [courseSectionData, courseEntireData, location.pathname, courseId, sectionId, subSectionId, navigate])
@@ -163,7 +215,16 @@ const VideoDetails = () => {
       token
     )
     if (res) {
+      // Update local state immediately
       dispatch(updateCompletedLectures(subSectionId))
+      
+      // Also refresh the course data to ensure persistence
+      try {
+        const courseData = await getFullDetailsOfCourse(courseId, token)
+        dispatch(setCompletedLectures(courseData.completedVideos))
+      } catch (error) {
+        console.error("Error refreshing course data:", error)
+      }
     }
     setLoading(false)
   }
@@ -174,60 +235,76 @@ const VideoDetails = () => {
         !videoData ? <h1>Loading...</h1> :
           (
             <div className="">
-              <Player className="w-full relative"
-                ref={playerRef}
-                src={videoData.videoUrl}
-                aspectRatio="16:9"
-                fluid={true}
-                autoPlay={false}
-                onEnded={() => setVideoEnded(true)}
-              >
+              {isLocked ? (
+                <div className="w-full aspect-video bg-richblack-800 rounded-lg flex flex-col items-center justify-center text-white">
+                  <div className="text-6xl mb-4">🔒</div>
+                  <h2 className="text-2xl font-bold mb-2">Video Locked</h2>
+                  <p className="text-gray-300 text-center max-w-md mb-6">
+                    You must complete the previous video before accessing this one. Videos must be watched in sequential order.
+                  </p>
+                  <button 
+                    onClick={() => navigate(`/dashboard/enrolled-courses`)}
+                    className="bg-yellow-400 text-black px-6 py-3 rounded-lg font-semibold hover:bg-yellow-300 transition-colors"
+                  >
+                    Back to Course
+                  </button>
+                </div>
+              ) : (
+                <Player className="w-full relative"
+                  ref={playerRef}
+                  src={videoData.videoUrl}
+                  aspectRatio="16:9"
+                  fluid={true}
+                  autoPlay={false}
+                  onEnded={() => setVideoEnded(true)}
+                >
 
-                <BigPlayButton position="center" />
+                  <BigPlayButton position="center" />
 
-                <LoadingSpinner />
-                <ControlBar>
-                  <PlaybackRateMenuButton rates={[5, 2, 1, 0.5, 0.1]} order={7.1} />
-                  <ReplayControl seconds={5} order={7.1} />
-                  <ForwardControl seconds={5} order={7.2} />
-                  <TimeDivider order={4.2} />
-                  <CurrentTimeDisplay order={4.1} />
-                  <TimeDivider order={4.2} />
-                </ControlBar>
-                {
-                  videoEnded && (
-                    <div className='flex justify-center items-center'>
+                  <LoadingSpinner />
+                  <ControlBar>
+                    <PlaybackRateMenuButton rates={[5, 2, 1, 0.5, 0.1]} order={7.1} />
+                    <ReplayControl seconds={5} order={7.1} />
+                    <ForwardControl seconds={5} order={7.2} />
+                    <TimeDivider order={4.2} />
+                    <CurrentTimeDisplay order={4.1} />
+                    <TimeDivider order={4.2} />
+                  </ControlBar>
+                  {
+                    videoEnded && (
                       <div className='flex justify-center items-center'>
+                        <div className='flex justify-center items-center'>
+                          {
+                            !completedLectures.includes(videoData._id) && (
+                              <button onClick={() => { handleLectureCompletion() }} className='bg-yellow-100 text-richblack-900 absolute top-[20%] hover:scale-90 z-20 font-medium md:text-sm px-4 py-2 rounded-md'>Mark as Completed</button>
+                            )
+                          }
+                        </div>
                         {
-                          !completedLectures.includes(videoData._id) && (
-                            <button onClick={() => { handleLectureCompletion() }} className='bg-yellow-100 text-richblack-900 absolute top-[20%] hover:scale-90 z-20 font-medium md:text-sm px-4 py-2 rounded-md'>Mark as Completed</button>
+                          !isFirstVideo() && (
+                            <div className=' z-20 left-0 top-1/2 transform -translate-y-1/2 absolute m-5'>
+                              <BiSkipPreviousCircle onClick={goToPrevVideo} className=" text-2xl md:text-5xl bg-richblack-600 rounded-full cursor-pointer hover:scale-90" />
+                              {/* <button onClick={previousLecture} className='bg-blue-500 text-white px-4 py-2 rounded-md'>Previous Lecture</button> */}
+                            </div>
+                          )
+
+                        }
+                        {
+                          !isLastVideo() && (
+                            <div className=' z-20 right-4 top-1/2 transform -translate-y-1/2 absolute m-5'>
+                              <BiSkipNextCircle onClick={goToNextVideo} className="text-2xl md:text-5xl bg-richblack-600 rounded-full cursor-pointer hover:scale-90" />
+                              {/* <button onClick={nextLecture} className='bg-blue-500 text-white px-4 py-2 rounded-md'>Next Lecture</button> */}
+                            </div>
                           )
                         }
+                        {
+                          <MdOutlineReplayCircleFilled onClick={() => { playerRef.current.seek(0); playerRef.current.play(); setVideoEnded(false) }} className="text-2xl md:text-5xl bg-richblack-600 rounded-full cursor-pointer hover:scale-90 absolute top-1/2 z-20" />
+                        }
                       </div>
-                      {
-                        !isFirstVideo() && (
-                          <div className=' z-20 left-0 top-1/2 transform -translate-y-1/2 absolute m-5'>
-                            <BiSkipPreviousCircle onClick={goToPrevVideo} className=" text-2xl md:text-5xl bg-richblack-600 rounded-full cursor-pointer hover:scale-90" />
-                            {/* <button onClick={previousLecture} className='bg-blue-500 text-white px-4 py-2 rounded-md'>Previous Lecture</button> */}
-                          </div>
-                        )
-
-                      }
-                      {
-                        !isLastVideo() && (
-                          <div className=' z-20 right-4 top-1/2 transform -translate-y-1/2 absolute m-5'>
-                            <BiSkipNextCircle onClick={goToNextVideo} className="text-2xl md:text-5xl bg-richblack-600 rounded-full cursor-pointer hover:scale-90" />
-                            {/* <button onClick={nextLecture} className='bg-blue-500 text-white px-4 py-2 rounded-md'>Next Lecture</button> */}
-                          </div>
-                        )
-                      }
-                      {
-                        <MdOutlineReplayCircleFilled onClick={() => { playerRef.current.seek(0); playerRef.current.play(); setVideoEnded(false) }} className="text-2xl md:text-5xl bg-richblack-600 rounded-full cursor-pointer hover:scale-90 absolute top-1/2 z-20" />
-                      }
-                    </div>
-                  )
-                }
-              </Player>
+                    )
+                  }
+                </Player>
+              )}
             </div>
           )
       }

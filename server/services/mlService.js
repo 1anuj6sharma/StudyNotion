@@ -1,10 +1,4 @@
 const { Course, CourseAnalytics, User, Rating } = require('../models');
-const OpenAI = require('openai');
-
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
 
 // Content-based filtering: Recommend courses similar to what the user has liked
 async function getContentBasedRecommendations(userId, limit = 5) {
@@ -133,68 +127,8 @@ async function getHybridRecommendations(userId, limit = 5) {
   }
 }
 
-// Generate AI-powered course creation suggestions
-async function generateCourseSuggestions(userId) {
-  try {
-    const user = await User.findById(userId).populate('courses');
-    if (!user) return [];
-
-    // Get market trends and user's teaching history
-    const marketTrends = await CourseAnalytics.aggregate([
-      { $sort: { marketDemandScore: -1 } },
-      { $limit: 10 },
-      { $lookup: {
-        from: 'courses',
-        localField: 'courseId',
-        foreignField: '_id',
-        as: 'course'
-      }}
-    ]);
-
-    // Prepare context for AI
-    const context = {
-      userExpertise: user.expertise || [],
-      userCourses: user.courses.map(c => c.title),
-      marketTrends: marketTrends.map(t => ({
-        title: t.course[0]?.title,
-        category: t.course[0]?.category,
-        demandScore: t.marketDemandScore,
-        studentCount: t.studentCount
-      }))
-    };
-
-    // Generate suggestions using OpenAI
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert course creation advisor. Analyze the following data and provide 5 specific course topic suggestions that would be valuable for the instructor based on their expertise and current market trends.`
-        },
-        {
-          role: "user",
-          content: `Instructor's expertise: ${context.userExpertise.join(', ')}. \n` +
-                   `Their existing courses: ${context.userCourses.join(', ')}. \n` +
-                   `Market trends: ${JSON.stringify(context.marketTrends, null, 2)}`
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 500
-    });
-
-    return completion.choices[0].message.content.split('\n')
-      .filter(line => line.trim().match(/^\d+\./)) // Only get numbered list items
-      .map(line => line.replace(/^\d+\.\s*/, '').trim())
-      .filter(Boolean);
-  } catch (error) {
-    console.error('Course suggestion generation error:', error);
-    return [];
-  }
-}
-
 module.exports = {
   getContentBasedRecommendations,
   getCollaborativeRecommendations,
-  getHybridRecommendations,
-  generateCourseSuggestions
+  getHybridRecommendations
 };

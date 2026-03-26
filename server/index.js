@@ -138,9 +138,6 @@ app.use('/api/v1/payment', paymentRoutes);
 app.use('/api/v1/reach', contactUsRoute);
 app.use('/api/v1/live-class', liveClassRoutes);
 
-// AI Chatbot Routes
-const aiChatbotRouter = require('./routes/aiChatbot');
-app.use('/api/v1/ai-chatbot', aiChatbotRouter);
 
 // Testing the server
 app.get("/", (req, res) => {
