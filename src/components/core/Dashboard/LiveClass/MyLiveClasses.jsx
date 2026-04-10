@@ -181,7 +181,7 @@ const MyLiveClasses = () => {
         ) : (
           <div className="space-y-6">
             {/* Live Classes */}
-            {upcomingClasses.filter(cls => isClassLive(cls.scheduledTime, cls.duration)).length > 0 && (
+            {upcomingClasses.filter(cls => isClassLive(cls.scheduledAt, cls.duration)).length > 0 && (
               <div>
                 <h2 className="text-2xl font-semibold text-richblack-5 mb-4 flex items-center">
                   <div className="w-3 h-3 bg-green-500 rounded-full mr-3 animate-pulse"></div>
@@ -234,7 +234,7 @@ const MyLiveClasses = () => {
             )}
 
             {/* Starting Soon */}
-            {upcomingClasses.filter(cls => isClassStartingSoon(cls.scheduledTime)).length > 0 && (
+            {upcomingClasses.filter(cls => isClassStartingSoon(cls.scheduledAt)).length > 0 && (
               <div>
                 <h2 className="text-2xl font-semibold text-richblack-5 mb-4 flex items-center">
                   <div className="w-3 h-3 bg-yellow-500 rounded-full mr-3"></div>
@@ -242,7 +242,7 @@ const MyLiveClasses = () => {
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {upcomingClasses
-                    .filter(cls => isClassStartingSoon(cls.scheduledTime))
+                    .filter(cls => isClassStartingSoon(cls.scheduledAt))
                     .map((liveClass) => (
                       <div
                         key={liveClass._id}
@@ -276,12 +276,14 @@ const MyLiveClasses = () => {
                           </div>
                         </div>
 
-                        <button
-                          className="w-full px-4 py-2 bg-yellow-50 text-richblack-900 rounded-md hover:bg-yellow-25 transition-colors font-medium"
-                          disabled
+                        <IconBtn
+                          text={joiningClass === liveClass._id ? 'Joining...' : 'Join Now'}
+                          onclick={() => handleJoinClass(liveClass._id)}
+                          disabled={joiningClass === liveClass._id}
+                          customClasses="w-full bg-yellow-50 text-richblack-900 hover:bg-yellow-25"
                         >
-                          Waiting to Start
-                        </button>
+                          <MdVideoCall />
+                        </IconBtn>
                       </div>
                     ))}
                 </div>

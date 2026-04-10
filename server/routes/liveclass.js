@@ -290,7 +290,9 @@ router.post('/create', async (req, res) => {
 router.get('/upcoming', auth, async (req, res) => {
   try {
     const now = new Date();
-    const classes = await LiveClass.find({ 
+    console.log('Fetching upcoming classes for user:', req.user?.id, 'at time:', now.toISOString());
+    
+    const classes = await LiveClassModel.find({ 
       scheduledAt: { $gte: now },
       status: { $in: ['scheduled', 'live'] }
     })
@@ -298,6 +300,7 @@ router.get('/upcoming', auth, async (req, res) => {
     .populate('course', 'courseName thumbnail')
     .sort({ scheduledAt: 1 });
     
+    console.log(`Found ${classes.length} upcoming classes`);
     res.json({ success: true, classes });
   } catch (err) {
     console.error('Error fetching upcoming classes:', err);
@@ -312,10 +315,13 @@ router.get('/upcoming', auth, async (req, res) => {
 router.get('/course/:courseId', async (req, res) => {
   try {
     const { courseId } = req.params;
-    const classes = await LiveClass.find({ course: courseId })
+    console.log('Fetching classes for course:', courseId);
+    
+    const classes = await LiveClassModel.find({ course: courseId })
       .populate('instructor', 'firstName lastName email')
       .sort({ scheduledAt: -1 });
     
+    console.log(`Found ${classes.length} classes for course ${courseId}`);
     res.json({ success: true, classes });
   } catch (err) {
     console.error('Error fetching course classes:', err);
@@ -894,10 +900,13 @@ router.patch('/:classId/status', auth, async (req, res) => {
 router.get('/instructor/my-classes', auth, async (req, res) => {
   try {
     const instructorId = req.user?.id || req.query.instructorId;
-    const classes = await LiveClass.find({ instructor: instructorId })
+    console.log('Fetching classes for instructor:', instructorId);
+    
+    const classes = await LiveClassModel.find({ instructor: instructorId })
       .populate('course', 'courseName thumbnail')
       .sort({ scheduledAt: -1 });
     
+    console.log(`Found ${classes.length} classes for instructor ${instructorId}`);
     res.json({ success: true, classes });
   } catch (err) {
     console.error('Error fetching instructor classes:', err);
