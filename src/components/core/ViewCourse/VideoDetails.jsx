@@ -12,6 +12,8 @@ import { markLectureAsComplete, getFullDetailsOfCourse } from "../../../services
 import { updateCompletedLectures, setCompletedLectures } from "../../../slices/viewCourseSlice"
 import { BiSkipNextCircle, BiSkipPreviousCircle } from "react-icons/bi"
 import { MdOutlineReplayCircleFilled } from "react-icons/md"
+import QuizModal from "./QuizModal"
+import { getQuiz } from "../../../services/operations/quizAPI"
 
 const VideoDetails = () => {
   const { courseId, sectionId, subSectionId } = useParams()
@@ -23,10 +25,33 @@ const VideoDetails = () => {
   const { courseSectionData, courseEntireData, completedLectures } =
     useSelector((state) => state.viewCourse)
 
+  // Filter completed lectures to only include those from current course
+  const getValidCompletedLectures = () => {
+    if (!courseSectionData || !completedLectures) return []
+    
+    const courseVideoIds = []
+    courseSectionData.forEach(section => {
+      if (section.subSection) {
+        section.subSection.forEach(subsection => {
+          courseVideoIds.push(subsection._id.toString())
+        })
+      }
+    })
+    
+    return completedLectures.filter(lectureId => 
+      courseVideoIds.includes(lectureId.toString())
+    )
+  }
+
+  const validCompletedLectures = getValidCompletedLectures()
+
   const [videoData, setVideoData] = useState([])
   const [videoEnded, setVideoEnded] = useState(false)
   const [loading, setLoading] = useState(false) // Loading state for lecture completion
   const [isLocked, setIsLocked] = useState(false)
+  const [showQuizModal, setShowQuizModal] = useState(false)
+  const [quizFailed, setQuizFailed] = useState(false)
+  const [unlockTrigger, setUnlockTrigger] = useState(0) // Trigger to re-evaluate unlock logic
 
   useEffect(() => {
     ; (async () => {
@@ -58,31 +83,75 @@ const VideoDetails = () => {
           return
         }
 
-        // Check if previous video is completed
+        // Check if previous video is completed AND quiz passed (if quiz exists)
         let isUnlocked = false
         if (currentSubSectionIndx > 0) {
           const prevVideoId = courseSectionData[currentSectionIndx].subSection[currentSubSectionIndx - 1]._id
-          isUnlocked = completedLectures.includes(prevVideoId)
-          console.log("🔓 Checking previous video in same section:", {
+          const prevVideoCompleted = validCompletedLectures.includes(prevVideoId)
+          
+          // Check if previous lecture has a quiz and if it's passed
+          const checkQuizPass = async () => {
+            try {
+              const prevQuiz = await getQuiz(prevVideoId, token)
+              // Check if the latest attempt has passed
+              const latestAttempt = prevQuiz?.attempts?.[prevQuiz.attempts.length - 1]
+              return latestAttempt?.hasPassed || !prevQuiz // Unlocked if quiz passed or no quiz
+            } catch (error) {
+              console.log("No quiz found for previous lecture:", prevVideoId)
+              return true // No quiz means unlocked
+            }
+          }
+          
+          const quizPassed = await checkQuizPass()
+          // Video unlocks if previous video is completed AND quiz is passed
+          isUnlocked = prevVideoCompleted && quizPassed
+          
+          console.log("Checking previous video in same section:", {
             prevVideoId,
+            prevVideoCompleted,
+            quizPassed,
             isUnlocked,
-            completedLectures
+            validCompletedLectures
           })
-        } else if (currentSectionIndx > 0) {
+        } else if (currentSectionIndx === 0 && currentSubSectionIndx === 0) {
+          // First lecture of first section is always unlocked
+          isUnlocked = true
+        } else if (currentSubSectionIndx > 0 && currentSectionIndx === 0) {
+          // First lecture of subsequent sections - check last lecture of previous section
           const prevSection = courseSectionData[currentSectionIndx - 1]
-          const lastVideoOfPrevSection = prevSection.subSection[prevSection.subSection.length - 1]._id
-          isUnlocked = completedLectures.includes(lastVideoOfPrevSection)
-          console.log("🔓 Checking last video of previous section:", {
-            lastVideoOfPrevSection,
-            isUnlocked,
-            completedLectures
-          })
+          if (prevSection && prevSection.subSection && prevSection.subSection.length > 0) {
+            const lastVideoOfPrevSection = prevSection.subSection[prevSection.subSection.length - 1]._id
+            const lastVideoCompleted = validCompletedLectures.includes(lastVideoOfPrevSection)
+            
+            // Check if previous lecture has a quiz and if it's passed
+            const checkQuizPass = async () => {
+              try {
+                const prevQuiz = await getQuiz(lastVideoOfPrevSection, token)
+                return prevQuiz?.hasPassed || !prevQuiz
+              } catch (error) {
+                console.log("No quiz found for last video of previous section:", lastVideoOfPrevSection)
+                return true
+              }
+            }
+            
+            const quizPassed = await checkQuizPass()
+            // Special case: if current lecture is completed and previous quiz is passed, unlock
+            const currentVideoCompleted = validCompletedLectures.includes(subSectionId)
+            isUnlocked = (lastVideoCompleted && quizPassed) || (currentVideoCompleted && quizPassed)
+          } else {
+            // Previous section has no lectures - unlock
+            isUnlocked = true
+          }
+        } else {
+          // Should not reach here, but default to unlocked
+          isUnlocked = true
         }
 
-        console.log("🔓 Final unlock decision:", {
+        console.log("Final unlock decision:", {
           currentSectionIndx,
           currentSubSectionIndx,
-          isUnlocked
+          isUnlocked,
+          validCompletedLectures
         })
 
         if (isUnlocked) {
@@ -97,7 +166,28 @@ const VideoDetails = () => {
         }
       }
     })()
-  }, [courseSectionData, courseEntireData, location.pathname, courseId, sectionId, subSectionId, navigate])
+  }, [courseSectionData, courseEntireData, location.pathname, courseId, sectionId, subSectionId, navigate, unlockTrigger])
+
+  // Check if current video's quiz was failed
+  useEffect(() => {
+    const checkQuizStatus = async () => {
+      if (!subSectionId || !token) return
+      
+      try {
+        const quiz = await getQuiz(subSectionId, token)
+        if (quiz && quiz.attempts && quiz.attempts.length > 0) {
+          const latestAttempt = quiz.attempts[quiz.attempts.length - 1]
+          // Set quizFailed if the latest attempt failed
+          setQuizFailed(!latestAttempt.hasPassed)
+        } else {
+          setQuizFailed(false)
+        }
+      } catch (error) {
+        setQuizFailed(false)
+      }
+    }
+    checkQuizStatus()
+  }, [subSectionId, token])
 
 
   const isFirstVideo = () => {
@@ -118,11 +208,14 @@ const VideoDetails = () => {
 
 
   const goToNextVideo = () => {
-
-
     const currentSectionIndx = courseSectionData.findIndex(
       (data) => data._id === sectionId
     )
+
+    // Add safety check
+    if (currentSectionIndx === -1 || !courseSectionData[currentSectionIndx]) {
+      return
+    }
 
     const noOfSubsections =
       courseSectionData[currentSectionIndx].subSection.length
@@ -134,17 +227,21 @@ const VideoDetails = () => {
 
 
     if (currentSubSectionIndx !== noOfSubsections - 1) {
-      const nextSubSectionId =
-        courseSectionData[currentSectionIndx].subSection[
-          currentSubSectionIndx + 1
-        ]._id
+      // Add safety check for next subsection
+      const nextSubSection = courseSectionData[currentSectionIndx].subSection[currentSubSectionIndx + 1];
+      if (!nextSubSection) return;
+      
+      const nextSubSectionId = nextSubSection._id
       navigate(
         `/view-course/${courseId}/section/${sectionId}/sub-section/${nextSubSectionId}`
       )
     } else {
-      const nextSectionId = courseSectionData[currentSectionIndx + 1]._id
-      const nextSubSectionId =
-        courseSectionData[currentSectionIndx + 1].subSection[0]._id
+      // Add safety check for next section
+      const nextSection = courseSectionData[currentSectionIndx + 1];
+      if (!nextSection || !nextSection.subSection || !nextSection.subSection[0]) return;
+      
+      const nextSectionId = nextSection._id
+      const nextSubSectionId = nextSection.subSection[0]._id
       navigate(
         `/view-course/${courseId}/section/${nextSectionId}/sub-section/${nextSubSectionId}`
       )
@@ -229,6 +326,28 @@ const VideoDetails = () => {
     setLoading(false)
   }
 
+  const handleQuizComplete = (subsectionId) => {
+    // Refresh course data after quiz completion
+    const refreshCourseData = async () => {
+      try {
+        const courseData = await getFullDetailsOfCourse(courseId, token)
+        dispatch(setCompletedLectures(courseData.completedVideos))
+        
+        // Check if quiz was passed and trigger unlock re-evaluation
+        const quizData = await getQuiz(subsectionId, token)
+        if (quizData && quizData.hasPassed) {
+          console.log("Quiz passed - triggering unlock re-evaluation")
+          // Trigger unlock re-evaluation
+          setUnlockTrigger(prev => prev + 1)
+        }
+      } catch (error) {
+        console.error("Error refreshing course data:", error)
+      }
+    }
+    refreshCourseData()
+    setShowQuizModal(false)
+  }
+
   return (
     <div className='md:w-[calc(100vw-320px)] w-screen p-3'>
       {
@@ -240,7 +359,7 @@ const VideoDetails = () => {
                   <div className="text-6xl mb-4">🔒</div>
                   <h2 className="text-2xl font-bold mb-2">Video Locked</h2>
                   <p className="text-gray-300 text-center max-w-md mb-6">
-                    You must complete the previous video before accessing this one. Videos must be watched in sequential order.
+                    You must complete the previous video and pass the quiz (if available) before accessing this one. Videos must be watched in sequential order.
                   </p>
                   <button 
                     onClick={() => navigate(`/dashboard/enrolled-courses`)}
@@ -273,10 +392,18 @@ const VideoDetails = () => {
                   {
                     videoEnded && (
                       <div className='flex justify-center items-center'>
-                        <div className='flex justify-center items-center'>
+                        <div className='flex justify-center items-center gap-4'>
                           {
-                            !completedLectures.includes(videoData._id) && (
-                              <button onClick={() => { handleLectureCompletion() }} className='bg-yellow-100 text-richblack-900 absolute top-[20%] hover:scale-90 z-20 font-medium md:text-sm px-4 py-2 rounded-md'>Mark as Completed</button>
+                            (!validCompletedLectures.includes(videoData._id) || quizFailed) && (
+                              <>
+                                <button onClick={() => { handleLectureCompletion() }} className='bg-yellow-100 text-richblack-900 absolute top-[20%] hover:scale-90 z-20 font-medium md:text-sm px-4 py-2 rounded-md'>Mark as Completed</button>
+                                <button 
+                                  onClick={() => setShowQuizModal(true)} 
+                                  className='bg-blue-600 text-white absolute top-[35%] hover:scale-90 z-20 font-medium md:text-sm px-4 py-2 rounded-md'
+                                >
+                                  {quizFailed ? 'Retake Quiz' : 'Take Quiz'}
+                                </button>
+                              </>
                             )
                           }
                         </div>
@@ -313,6 +440,15 @@ const VideoDetails = () => {
         <h1 className='text-2xl font-bold text-richblack-25'>{videoData?.title}</h1>
         <p className='text-gray-500 text-richblack-100'>{videoData?.description}</p>
       </div>
+
+      {/* Quiz Modal */}
+      <QuizModal
+        isOpen={showQuizModal}
+        onClose={() => setShowQuizModal(false)}
+        subsectionId={subSectionId}
+        onQuizComplete={handleQuizComplete}
+        videoTitle={videoData?.title}
+      />
     </div>
   )
 }

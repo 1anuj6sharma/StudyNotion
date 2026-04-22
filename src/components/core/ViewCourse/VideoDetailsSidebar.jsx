@@ -11,21 +11,43 @@ import { MdOutlineKeyboardArrowDown } from 'react-icons/md'
 const VideoDetailsSidebar = ({ setReviewModal }) => {
   console.log("HII", setReviewModal);
   const [videoActive, setVideoActive] = useState("");
+  const [showSidebar, setShowSidebar] = useState(false);
   const { courseId, sectionId, subsectionId } = useParams();
   const { courseSectionData, courseEntireData, completedLectures, totalNoOfLectures } = useSelector(state => state.viewCourse);
   const navigate = useNavigate();
-  const [showSidebar, setShowSidebar] = useState(false);
+
+  // Filter completed lectures to only include those from current course
+  const getValidCompletedLectures = () => {
+    if (!courseSectionData || !completedLectures) return []
+    
+    const courseVideoIds = []
+    courseSectionData.forEach(section => {
+      if (section.subSection) {
+        section.subSection.forEach(subsection => {
+          courseVideoIds.push(subsection._id.toString())
+        })
+      }
+    })
+    
+    return completedLectures.filter(lectureId => 
+      courseVideoIds.includes(lectureId.toString())
+    )
+  }
+
+  const validCompletedLectures = getValidCompletedLectures()
 
   // Debug logging
-  console.log("🔍 Debug - Course Data:", {
+  console.log("Debug - Course Data:", {
     courseSectionData,
     completedLectures,
+    validCompletedLectures,
     currentVideoId: subsectionId
   });
 
   const isVideoUnlocked = (sectionIndex, subSectionIndex) => {
     // First video is always unlocked
     if (sectionIndex === 0 && subSectionIndex === 0) {
+      console.log(" First video - always unlocked")
       console.log("🔓 First video - always unlocked")
       return true
     }
@@ -33,11 +55,11 @@ const VideoDetailsSidebar = ({ setReviewModal }) => {
     // Check if previous video in same section is completed
     if (subSectionIndex > 0) {
       const prevVideoId = courseSectionData[sectionIndex].subSection[subSectionIndex - 1]._id
-      const isPrevCompleted = completedLectures.includes(prevVideoId)
-      console.log("🔓 Checking previous video in same section:", {
+      const isPrevCompleted = validCompletedLectures.includes(prevVideoId)
+      console.log(" Checking previous video in same section:", {
         prevVideoId,
         isPrevCompleted,
-        completedLectures
+        validCompletedLectures
       })
       return isPrevCompleted
     }
@@ -46,11 +68,11 @@ const VideoDetailsSidebar = ({ setReviewModal }) => {
     if (subSectionIndex === 0 && sectionIndex > 0) {
       const prevSection = courseSectionData[sectionIndex - 1]
       const lastVideoOfPrevSection = prevSection.subSection[prevSection.subSection.length - 1]._id
-      const isLastOfPrevCompleted = completedLectures.includes(lastVideoOfPrevSection)
-      console.log("🔓 Checking last video of previous section:", {
+      const isLastOfPrevCompleted = validCompletedLectures.includes(lastVideoOfPrevSection)
+      console.log(" Checking last video of previous section:", {
         lastVideoOfPrevSection,
         isLastOfPrevCompleted,
-        completedLectures
+        validCompletedLectures
       })
       return isLastOfPrevCompleted
     }
@@ -103,7 +125,7 @@ const VideoDetailsSidebar = ({ setReviewModal }) => {
             <div className='flex flex-col'>
               <p>{courseEntireData?.courseName}</p>
               <p className='text-sm font-semibold text-richblack-500'>
-                {completedLectures?.length} of {totalNoOfLectures} Lectures Completed
+                {validCompletedLectures?.length} of {totalNoOfLectures} Lectures Completed
               </p>
             </div>
           </div>
@@ -122,7 +144,7 @@ const VideoDetailsSidebar = ({ setReviewModal }) => {
                   {
                     section?.subSection.map((subSection, subSectionIndex) => {
                       const isUnlocked = isVideoUnlocked(sectionIndex, subSectionIndex);
-                      const isCompleted = completedLectures?.includes(subSection?._id);
+                      const isCompleted = validCompletedLectures?.includes(subSection?._id);
                       
                       return (
                         <div key={subSection?._id} className='transition-[height] duration-500 ease-in-out'>

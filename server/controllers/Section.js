@@ -36,11 +36,11 @@ exports.createSection = async (req, res) => {
       })
       .exec()
 
-    // Return the updated course object in the response
+    // Return the newly created subsection in response
     res.status(200).json({
       success: true,
       message: "Section created successfully",
-      updatedCourse,
+      data: newSection, // Return only the new subsection, not the entire course
     })
   } catch (error) {
     // Handle errors

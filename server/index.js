@@ -34,6 +34,7 @@ const courseRoutes = require("./routes/Course");
 const paymentRoutes = require("./routes/Payments");
 const contactUsRoute = require("./routes/Contact");
 const liveClassRoutes = require('./routes/liveclass');
+const quizRoutes = require('./routes/Quiz');
 
 // Setting up port number
 const PORT = process.env.PORT || 4000;
@@ -137,6 +138,7 @@ app.use('/api/v1/course', courseRoutes);
 app.use('/api/v1/payment', paymentRoutes);
 app.use('/api/v1/reach', contactUsRoute);
 app.use('/api/v1/live-class', liveClassRoutes);
+app.use('/api/v1/quiz', quizRoutes);
 
 
 // Testing the server

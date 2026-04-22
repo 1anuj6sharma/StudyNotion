@@ -16,7 +16,7 @@ const getBaseUrl = () => {
 // Create axios instance with default config
 export const axiosInstance = axios.create({
   baseURL: getBaseUrl(),
-  timeout: 60000, // 60 seconds timeout
+  timeout: 300000, // 5 minutes timeout (300 seconds) for large file uploads
   headers: {
     // Don't set Content-Type here - let interceptor handle it
     "Accept": "application/json",

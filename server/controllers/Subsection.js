@@ -79,8 +79,8 @@ exports.createSubSection = async (req, res) => {
       { new: true }
     ).populate("subSection")
 
-    // Return the updated section in the response
-    return res.status(200).json({ success: true, data: updatedSection })
+    // Return the newly created subsection in the response
+    return res.status(200).json({ success: true, data: SubSectionDetails })
   } catch (error) {
     // Handle any errors that may occur during the process
     console.error("Error creating new sub-section:", error)

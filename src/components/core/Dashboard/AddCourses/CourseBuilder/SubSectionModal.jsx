@@ -11,6 +11,8 @@ import {
 import { setCourse } from "../../../../../slices/courseSlice"
 import IconBtn from "../../../../common/IconBtn"
 import Upload from "../Upload"
+import QuizCreationModal from "../../Instructor/QuizCreationModal"
+import { getQuizForInstructor } from "../../../../../services/operations/quizAPI"
 
 export default function SubSectionModal({
   modalData,
@@ -35,6 +37,9 @@ export default function SubSectionModal({
   const [loading, setLoading] = useState(false)
   const { token } = useSelector((state) => state.auth)
   const { course } = useSelector((state) => state.course)
+  const [showQuizModal, setShowQuizModal] = useState(false)
+  const [existingQuiz, setExistingQuiz] = useState(null)
+  const [createdSubsectionId, setCreatedSubsectionId] = useState(null)
 
   useEffect(() => {
     if (view || edit) {
@@ -44,6 +49,38 @@ export default function SubSectionModal({
       // The preview will be handled by viewData/editData props in Upload component
     }
   }, [view, edit, modalData.title, modalData.description, setValue])
+
+  // Load existing quiz data when editing or viewing
+  useEffect(() => {
+    if ((edit || view) && modalData._id) {
+      const loadQuiz = async () => {
+        try {
+          const quizData = await getQuizForInstructor(modalData._id, token)
+          setExistingQuiz(quizData)
+        } catch (error) {
+          console.log("No quiz found for this lecture")
+          setExistingQuiz(null)
+        }
+      }
+      loadQuiz()
+    }
+  }, [edit, view, modalData._id, token])
+
+  const handleQuizCreated = (quizData) => {
+    setExistingQuiz(quizData)
+  }
+
+  const handleSubSectionModalClose = () => {
+    setModalData(null)
+  }
+
+  const handleSubsectionSaved = () => {
+    // After successfully saving subsection, show quiz creation modal
+    // Use setTimeout to ensure modalData is updated first
+    setTimeout(() => {
+      setShowQuizModal(true)
+    }, 100)
+  }
 
   // detect whether form is updated or not
   const isFormUpdated = () => {
@@ -89,14 +126,15 @@ export default function SubSectionModal({
         const updatedCourse = { ...course, courseContent: updatedCourseContent }
         dispatch(setCourse(updatedCourse))
         toast.success("Subsection updated successfully")
+        handleSubsectionSaved()
       }
     } catch (error) {
       console.error("Error updating subsection:", error)
       toast.error(error.response?.data?.message || "Failed to update subsection")
     } finally {
-      setModalData(null)
       setLoading(false)
     }
+    // Don't setModalData(null) here - let quiz modal open first
   }
 
   const onSubmit = async (data) => {
@@ -142,12 +180,14 @@ export default function SubSectionModal({
     try {
       const result = await createSubSection(formData, token)
       if (result) {
+        setCreatedSubsectionId(result._id)
         const updatedCourseContent = course.courseContent.map((section) =>
           section._id === modalData ? result : section
         )
         const updatedCourse = { ...course, courseContent: updatedCourseContent }
         dispatch(setCourse(updatedCourse))
         toast.success("Subsection created successfully")
+        handleSubsectionSaved()
       }
     } catch (error) {
       console.error("Error creating subsection:", error)
@@ -155,8 +195,7 @@ export default function SubSectionModal({
     } finally {
       setLoading(false)
     }
-    setModalData(null)
-    setLoading(false)
+    // Don't setModalData(null) here - let quiz modal open first
   }
 
   return (
@@ -225,15 +264,35 @@ export default function SubSectionModal({
             )}
           </div>
           {!view && (
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
               <IconBtn
                 disabled={loading}
                 text={loading ? "Loading.." : edit ? "Save Changes" : "Save"}
               />
+              {modalData._id && (
+                <button
+                  type="button"
+                  onClick={() => setShowQuizModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  {existingQuiz ? "Edit Quiz" : "Create Quiz"}
+                </button>
+              )}
             </div>
           )}
         </form>
       </div>
+
+      {/* Quiz Creation Modal */}
+      <QuizCreationModal
+        isOpen={showQuizModal}
+        onClose={() => setShowQuizModal(false)}
+        subsectionId={createdSubsectionId}
+        courseId={course._id}
+        existingQuiz={existingQuiz}
+        onQuizCreated={handleQuizCreated}
+        onSubSectionModalClose={handleSubSectionModalClose}
+      />
     </div>
   )
 }

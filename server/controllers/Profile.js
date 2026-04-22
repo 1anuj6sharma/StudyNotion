@@ -240,11 +240,27 @@ exports.getEnrolledCourses = async (req, res) => {
       const progress = progressMap.get(course._id.toString())
       const completedVideos = progress?.completedVideos || []
       
+      // Filter completed videos to only include those that belong to this course
+      const courseVideoIds = []
+      if (course.courseContent) {
+        course.courseContent.forEach(section => {
+          if (section.subSection) {
+            section.subSection.forEach(subsection => {
+              courseVideoIds.push(subsection._id.toString())
+            })
+          }
+        })
+      }
+      
+      const validCompletedVideos = completedVideos.filter(videoId => 
+        courseVideoIds.includes(videoId.toString())
+      )
+      
       // Calculate progress percentage
       let progressPercentage = 0
-      if (totalSubsections > 0 && completedVideos.length > 0) {
+      if (totalSubsections > 0 && validCompletedVideos.length > 0) {
         progressPercentage = Math.min(
-          Math.round((completedVideos.length / totalSubsections) * 10000) / 100,
+          Math.round((validCompletedVideos.length / totalSubsections) * 10000) / 100,
           100 // Cap at 100%
         )
       } else if (totalSubsections === 0) {
@@ -255,7 +271,7 @@ exports.getEnrolledCourses = async (req, res) => {
         ...course,
         totalDuration: convertSecondsToDuration(totalDurationInSeconds),
         progressPercentage,
-        completedVideos: completedVideos.length,
+        completedVideos: validCompletedVideos.length,
         totalVideos: totalSubsections
       }
     }))
