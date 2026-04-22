@@ -76,7 +76,6 @@ const QuizModal = ({
 
   const startQuiz = () => {
     setQuizStarted(true);
-    setStartTime(Date.now());
   };
 
   const selectAnswer = (questionIndex, answerIndex) => {
