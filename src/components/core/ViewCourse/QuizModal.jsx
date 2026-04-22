@@ -18,13 +18,12 @@ const QuizModal = ({
   const [quizStarted, setQuizStarted] = useState(false);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [results, setResults] = useState(null);
-  const [startTime, setStartTime] = useState(null);
 
   useEffect(() => {
     if (isOpen && subsectionId) {
       loadQuiz();
     }
-  }, [isOpen, subsectionId]);
+  }, [isOpen, subsectionId, loadQuiz]);
 
   useEffect(() => {
     let timer;
@@ -36,7 +35,7 @@ const QuizModal = ({
       handleSubmitQuiz();
     }
     return () => clearTimeout(timer);
-  }, [quizStarted, quizSubmitted, timeLeft]);
+  }, [quizStarted, quizSubmitted, timeLeft, handleSubmitQuiz]);
 
   const loadQuiz = async () => {
     try {

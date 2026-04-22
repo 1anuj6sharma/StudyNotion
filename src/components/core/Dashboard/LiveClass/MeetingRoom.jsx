@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
-import { getLiveClassDetails, getLiveClassByRoomId, joinLiveClassDirect, leaveLiveClassDirect, updateClassStatus, updateParticipantStatus } from '../../../../services/operations/liveClassAPI';
+import { getLiveClassDetails, getLiveClassByRoomId, joinLiveClassDirect, leaveLiveClassDirect } from '../../../../services/operations/liveClassAPI';
 import { MdMic, MdMicOff, MdVideocam, MdVideocamOff, MdCallEnd, MdChat, MdPeople } from 'react-icons/md';
 
 // Video styles are now defined inline in the component
@@ -168,7 +168,7 @@ const MeetingRoom = () => {
         resolve(); // Still resolve to prevent hanging
       }
     });
-  }, [liveClass?._id, token]);
+  }, []);
 
   const checkCameraPermissions = async () => {
     try {
@@ -530,7 +530,7 @@ const MeetingRoom = () => {
         peerConnectionRef.current.close();
       }
     };
-  }, [setupWebRTC]);
+  }, [setupWebRTC, fetchLiveClassDetails, initializeMedia]);
 
   // Handle video toggle
   const toggleVideo = () => {

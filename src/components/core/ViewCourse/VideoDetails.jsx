@@ -47,7 +47,6 @@ const VideoDetails = () => {
 
   const [videoData, setVideoData] = useState([])
   const [videoEnded, setVideoEnded] = useState(false)
-  const [loading, setLoading] = useState(false) // Loading state for lecture completion
   const [isLocked, setIsLocked] = useState(false)
   const [showQuizModal, setShowQuizModal] = useState(false)
   const [quizFailed, setQuizFailed] = useState(false)
@@ -166,7 +165,7 @@ const VideoDetails = () => {
         }
       }
     })()
-  }, [courseSectionData, courseEntireData, location.pathname, courseId, sectionId, subSectionId, navigate, unlockTrigger])
+  }, [courseSectionData, courseEntireData, location.pathname, courseId, sectionId, subSectionId, navigate, unlockTrigger, token, validCompletedLectures])
 
   // Check if current video's quiz was failed
   useEffect(() => {
@@ -306,7 +305,6 @@ const VideoDetails = () => {
   }
 
   const handleLectureCompletion = async () => {
-    setLoading(true)
     const res = await markLectureAsComplete(
       { courseId: courseId, subsectionId: subSectionId },
       token
@@ -323,7 +321,6 @@ const VideoDetails = () => {
         console.error("Error refreshing course data:", error)
       }
     }
-    setLoading(false)
   }
 
   const handleQuizComplete = (subsectionId) => {

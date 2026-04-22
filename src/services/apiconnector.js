@@ -156,15 +156,15 @@ export const apiConnector = async (method, url, bodyData, headers, params) => {
     
     // Handle network errors
     if (!error.response) {
-      throw {
-        response: {
-          status: 500,
-          data: {
-            success: false,
-            message: 'Network error. Please check your connection and try again.'
-          }
+      const networkError = new Error('Network error. Please check your connection and try again.');
+      networkError.response = {
+        status: 500,
+        data: {
+          success: false,
+          message: 'Network error. Please check your connection and try again.'
         }
       };
+      throw networkError;
     }
     
     // Log the error details
