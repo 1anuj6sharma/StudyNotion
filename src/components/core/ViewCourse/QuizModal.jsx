@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { RxCross2 } from "react-icons/rx";
 import { submitQuiz, getQuiz } from "../../../services/operations/quizAPI";
@@ -19,25 +19,7 @@ const QuizModal = ({
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [results, setResults] = useState(null);
 
-  useEffect(() => {
-    if (isOpen && subsectionId) {
-      loadQuiz();
-    }
-  }, [isOpen, subsectionId, loadQuiz]);
-
-  useEffect(() => {
-    let timer;
-    if (quizStarted && !quizSubmitted && timeLeft > 0) {
-      timer = setTimeout(() => {
-        setTimeLeft(timeLeft - 1);
-      }, 1000);
-    } else if (timeLeft === 0 && quizStarted && !quizSubmitted) {
-      handleSubmitQuiz();
-    }
-    return () => clearTimeout(timer);
-  }, [quizStarted, quizSubmitted, timeLeft, handleSubmitQuiz]);
-
-  const loadQuiz = async () => {
+  const loadQuiz = useCallback(async () => {
     try {
       setLoading(true);
       const quiz = await getQuiz(subsectionId);
@@ -72,31 +54,15 @@ const QuizModal = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [subsectionId, onClose]);
 
-  const startQuiz = () => {
-    setQuizStarted(true);
-  };
-
-  const selectAnswer = (questionIndex, answerIndex) => {
-    const newAnswers = [...answers];
-    newAnswers[questionIndex] = answerIndex;
-    setAnswers(newAnswers);
-  };
-
-  const nextQuestion = () => {
-    if (currentQuestion < quizData.questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
+  useEffect(() => {
+    if (isOpen && subsectionId) {
+      loadQuiz();
     }
-  };
+  }, [isOpen, subsectionId, loadQuiz]);
 
-  const prevQuestion = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
-    }
-  };
-
-  const handleSubmitQuiz = async () => {
+  const handleSubmitQuiz = useCallback(async () => {
     if (answers.includes(null)) {
       toast.error("Please answer all questions before submitting");
       return;
@@ -119,6 +85,40 @@ const QuizModal = ({
       toast.error(error.message || "Failed to submit quiz");
     } finally {
       setLoading(false);
+    }
+  }, [subsectionId, answers, onQuizComplete]);
+
+  useEffect(() => {
+    let timer;
+    if (quizStarted && !quizSubmitted && timeLeft > 0) {
+      timer = setTimeout(() => {
+        setTimeLeft(timeLeft - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && quizStarted && !quizSubmitted) {
+      handleSubmitQuiz();
+    }
+    return () => clearTimeout(timer);
+  }, [quizStarted, quizSubmitted, timeLeft, handleSubmitQuiz]);
+
+  const startQuiz = () => {
+    setQuizStarted(true);
+  };
+
+  const selectAnswer = (questionIndex, answerIndex) => {
+    const newAnswers = [...answers];
+    newAnswers[questionIndex] = answerIndex;
+    setAnswers(newAnswers);
+  };
+
+  const nextQuestion = () => {
+    if (currentQuestion < quizData.questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    }
+  };
+
+  const prevQuestion = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
     }
   };
 

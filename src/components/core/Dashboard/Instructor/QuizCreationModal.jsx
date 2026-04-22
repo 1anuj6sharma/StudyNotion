@@ -19,7 +19,7 @@ const QuizCreationModal = ({
     { question: "", options: ["", ""], correctAnswer: 0 }
   ]);
 
-  const { register, handleSubmit, setValue, watch, reset } = useForm({
+  const { register, handleSubmit } = useForm({
     defaultValues: {
       title: existingQuiz?.title || "",
       description: existingQuiz?.description || "",
