@@ -58,8 +58,12 @@ export default function CourseBuilderForm() {
       )
     }
     if (result) {
-      // console.log("section result", result)
-      dispatch(setCourse(result))
+      // Ensure proper state update by creating new reference
+      const updatedCourse = result.courseContent ? result : {
+        ...course,
+        courseContent: [...(course.courseContent || []), result]
+      }
+      dispatch(setCourse(updatedCourse))
       setEditSectionName(null)
       setValue("sectionName", "")
     }

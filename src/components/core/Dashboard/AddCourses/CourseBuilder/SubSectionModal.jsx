@@ -181,10 +181,21 @@ export default function SubSectionModal({
       const result = await createSubSection(formData, token)
       if (result) {
         setCreatedSubsectionId(result._id)
-        const updatedCourseContent = course.courseContent.map((section) =>
-          section._id === modalData ? result : section
-        )
-        const updatedCourse = { ...course, courseContent: updatedCourseContent }
+        // Manually add the subsection to ensure proper state update
+        const updatedCourseContent = course.courseContent.map((section) => {
+          if (section._id === modalData) {
+            return {
+              ...section,
+              subSection: [...(section.subSection || []), result]
+            }
+          }
+          return section
+        })
+        // Create a completely new course object to trigger re-render
+        const updatedCourse = {
+          ...course,
+          courseContent: updatedCourseContent
+        }
         dispatch(setCourse(updatedCourse))
         toast.success("Subsection created successfully")
         handleSubsectionSaved()
