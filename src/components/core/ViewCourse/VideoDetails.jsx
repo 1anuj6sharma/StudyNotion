@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useRef, useState, useMemo } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useNavigate, useParams } from "react-router-dom"
 
@@ -26,7 +26,7 @@ const VideoDetails = () => {
     useSelector((state) => state.viewCourse)
 
   // Filter completed lectures to only include those from current course
-  const getValidCompletedLectures = () => {
+  const validCompletedLectures = useMemo(() => {
     if (!courseSectionData || !completedLectures) return []
     
     const courseVideoIds = []
@@ -41,15 +41,14 @@ const VideoDetails = () => {
     return completedLectures.filter(lectureId => 
       courseVideoIds.includes(lectureId.toString())
     )
-  }
-
-  const validCompletedLectures = getValidCompletedLectures()
+  }, [courseSectionData, completedLectures])
 
   const [videoData, setVideoData] = useState([])
   const [videoEnded, setVideoEnded] = useState(false)
   const [isLocked, setIsLocked] = useState(false)
   const [showQuizModal, setShowQuizModal] = useState(false)
-  const [quizFailed, setQuizFailed] = useState(false)
+  const [quizExists, setQuizExists] = useState(false)
+  const [quizPassed, setQuizPassed] = useState(false)
   const [unlockTrigger, setUnlockTrigger] = useState(0) // Trigger to re-evaluate unlock logic
 
   useEffect(() => {
@@ -77,7 +76,6 @@ const VideoDetails = () => {
         // First video is always unlocked
         if (currentSectionIndx === 0 && currentSubSectionIndx === 0) {
           setVideoData(filteredVideoData[0])
-          setVideoEnded(false)
           setIsLocked(false)
           return
         }
@@ -155,17 +153,20 @@ const VideoDetails = () => {
 
         if (isUnlocked) {
           setVideoData(filteredVideoData[0])
-          setVideoEnded(false)
           setIsLocked(false)
         } else {
           // Show locked video warning instead of redirect
           setVideoData(filteredVideoData[0])
-          setVideoEnded(false)
           setIsLocked(true)
         }
       }
     })()
   }, [courseSectionData, courseEntireData, location.pathname, courseId, sectionId, subSectionId, navigate, unlockTrigger, token, validCompletedLectures])
+
+  // Reset videoEnded when video changes
+  useEffect(() => {
+    setVideoEnded(false)
+  }, [subSectionId])
 
   // Check if current video's quiz was failed
   useEffect(() => {
@@ -174,15 +175,23 @@ const VideoDetails = () => {
       
       try {
         const quiz = await getQuiz(subSectionId, token)
-        if (quiz && quiz.attempts && quiz.attempts.length > 0) {
-          const latestAttempt = quiz.attempts[quiz.attempts.length - 1]
-          // Set quizFailed if the latest attempt failed
-          setQuizFailed(!latestAttempt.hasPassed)
+        if (quiz) {
+          setQuizExists(true)
+          if (quiz.attempts && quiz.attempts.length > 0) {
+            const latestAttempt = quiz.attempts[quiz.attempts.length - 1]
+            // Set quizPassed based on the latest attempt
+            setQuizPassed(latestAttempt.hasPassed)
+          } else {
+            // Quiz exists but no attempts yet
+            setQuizPassed(false)
+          }
         } else {
-          setQuizFailed(false)
+          setQuizExists(false)
+          setQuizPassed(false)
         }
       } catch (error) {
-        setQuizFailed(false)
+        setQuizExists(false)
+        setQuizPassed(false)
       }
     }
     checkQuizStatus()
@@ -391,16 +400,18 @@ const VideoDetails = () => {
                       <div className='flex justify-center items-center'>
                         <div className='flex justify-center items-center gap-4'>
                           {
-                            (!validCompletedLectures.includes(videoData._id) || quizFailed) && (
-                              <>
-                                <button onClick={() => { handleLectureCompletion() }} className='bg-yellow-100 text-richblack-900 absolute top-[20%] hover:scale-90 z-20 font-medium md:text-sm px-4 py-2 rounded-md'>Mark as Completed</button>
-                                <button 
-                                  onClick={() => setShowQuizModal(true)} 
-                                  className='bg-blue-600 text-white absolute top-[35%] hover:scale-90 z-20 font-medium md:text-sm px-4 py-2 rounded-md'
-                                >
-                                  {quizFailed ? 'Retake Quiz' : 'Take Quiz'}
-                                </button>
-                              </>
+                            !validCompletedLectures.includes(videoData._id) && (
+                              <button onClick={() => { handleLectureCompletion() }} className='bg-yellow-100 text-richblack-900 absolute top-[20%] hover:scale-90 z-20 font-medium md:text-sm px-4 py-2 rounded-md'>Mark as Completed</button>
+                            )
+                          }
+                          {
+                            quizExists && (!validCompletedLectures.includes(videoData._id) || !quizPassed) && (
+                              <button 
+                                onClick={() => setShowQuizModal(true)} 
+                                className='bg-blue-600 text-white absolute top-[35%] hover:scale-90 z-20 font-medium md:text-sm px-4 py-2 rounded-md'
+                              >
+                                {!quizPassed ? 'Take Quiz' : 'Quiz Passed'}
+                              </button>
                             )
                           }
                         </div>
