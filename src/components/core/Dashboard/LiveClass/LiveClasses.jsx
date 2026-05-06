@@ -61,7 +61,7 @@ const LiveClasses = () => {
         // Get the meeting URL from different possible locations in the response
         const meetingUrl = result.meetingUrl || 
                          result.liveClass?.meetingUrl || 
-                         (result.liveClass?.roomId ? `http://localhost:3000/live-class/${result.liveClass.roomId}` : null);
+                         (result.liveClass?.roomId ? `${window.location.origin}/live-class/${result.liveClass.roomId}` : null);
         
         // Open the meeting URL if it exists, otherwise show a message
         if (meetingUrl) {

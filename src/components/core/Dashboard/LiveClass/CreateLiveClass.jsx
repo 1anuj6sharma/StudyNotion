@@ -50,7 +50,7 @@ const CreateLiveClass = () => {
       console.log('Form data before processing:', data);
       
       const roomId = `room-${Date.now()}-${generateRandomString(8)}`;
-      const meetingUrl = `https://meet.studynotion.com/${roomId}`;
+      const meetingUrl = `${window.location.origin}/live-class/${roomId}`;
       
       const formData = {
         title: data.title,
