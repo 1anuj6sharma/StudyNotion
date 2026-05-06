@@ -29,8 +29,8 @@ const LiveClassList = () => {
   const handleJoinClass = async (classId) => {
     try {
       const result = await dispatch(joinLiveClass(classId, token));
-      if (result?.meetingUrl) {
-        window.open(result.meetingUrl, '_blank');
+      if (result?.roomId) {
+        window.open(`${window.location.origin}/live-class/${result.roomId}`, '_blank');
       }
       fetchClasses(); // Refresh the list
     } catch (error) {
