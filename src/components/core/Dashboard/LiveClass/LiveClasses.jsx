@@ -59,13 +59,9 @@ const LiveClasses = () => {
         ));
         
         // Get the meeting URL from different possible locations in the response
-        const roomId = result.liveClass?.roomId || result.roomId;
-        let meetingUrl = result.meetingUrl || result.liveClass?.meetingUrl;
-        
-        // Always generate the URL dynamically to avoid domain mismatch issues
-        if (roomId) {
-          meetingUrl = `${window.location.origin}/live-class/${roomId}`;
-        }
+        const meetingUrl = result.meetingUrl || 
+                         result.liveClass?.meetingUrl || 
+                         (result.liveClass?.roomId ? `${window.location.origin}/live-class/${result.liveClass.roomId}` : null);
         
         // Open the meeting URL if it exists, otherwise show a message
         if (meetingUrl) {
@@ -256,7 +252,7 @@ const LiveClasses = () => {
                     {liveClass.status === 'live' && (
                       <IconBtn
                         text="Join Live"
-                        onclick={() => window.open(`${window.location.origin}/live-class/${liveClass.roomId}`, '_blank')}
+                        onclick={() => window.open(liveClass.meetingUrl, '_blank')}
                         customClasses="bg-blue-500 text-white hover:bg-blue-600 text-sm px-3 py-1"
                       >
                         <MdVideoCall />
